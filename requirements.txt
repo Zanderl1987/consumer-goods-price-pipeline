@@ -1,0 +1,10 @@
+# Core stack — needed by the query layer, curated dedup, validation, and
+# every pipeline. Pin to versions in your working environment.
+pandas>=2.0
+pyarrow>=14.0
+duckdb>=0.10
+requests>=2.31
+python-dotenv>=1.0
+
+# Test suite
+pytest>=7.0

@@ -1,0 +1,16 @@
+.env
+tokens.json
+tokens.db
+__pycache__/
+*.pyc
+*.parquet
+.idea/
+.worktrees/
+.superpowers/
+
+# Storage (data files — not tracked in git, but keep directory structure)
+storage/**/*.parquet
+storage/**/*.csv
+storage/**/*.json
+storage/logs/
+logs/
