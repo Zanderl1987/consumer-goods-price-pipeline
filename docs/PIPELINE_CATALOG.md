@@ -13,7 +13,7 @@ free API key.
 |---|---|---|---|
 | `bls_cpi_pipeline.py` | `bls_cpi`, `bls_ppi` | CPI (consumer price index, all items + food subgroups), PPI | `BLS_API_KEY` — keyless v1 fallback |
 | `bls_avg_prices_pipeline.py` | `bls_avg_prices` | ~60 BLS APU average prices — eggs, milk, bread, ground beef, chicken, coffee, gasoline, etc. | `BLS_API_KEY` — keyless v1 fallback |
-| `usda_ams_pipeline.py` | `usda_ams_wholesale`, `usda_ams_retail` | AMS market news — wholesale terminal prices, retail fruit/veg (incl. avocados). **SCAFFOLD — API base URL + report slugs unverified.** | `USDA_AMS_API_KEY` |
+| `usda_ams_pipeline.py` | `usda_ams_wholesale`, `usda_ams_retail` | AMS MARS market news — wholesale terminal prices, weekly retail produce (incl. avocados). API base URL + auth verified live 2026-08-03 (MARS v1.2, HTTP Basic key); FVWRETAIL confirmed, FVWV terminal slug pending live check | `USDA_AMS_API_KEY` |
 | `usda_nass_prices_pipeline.py` | `usda_prices_received`, `usda_prices_paid` | NASS QuickStats — farm prices received (commodities) and paid (inputs) | `USDA_NASS_API_KEY` |
 | `eia_energy_prices_pipeline.py` | `eia_gas_retail`, `eia_gas_spot`, `eia_electricity_price`, `eia_natgas_price` | Retail gasoline/diesel, spot prices, electricity price, natural gas citygate | `EIA_API_KEY` |
 | `fred_consumer_prices_pipeline.py` | `fred_consumer_prices`, `fred_used_cars` | FRED consumer series — used-car prices, tires, housing, retail aggregates | `FRED_API_KEY` |

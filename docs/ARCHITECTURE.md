@@ -77,8 +77,8 @@ fetch date. See the financial repo's PIT section before building analytics.
 ## Status
 
 - Stage 1 seed pipelines written and unit-tested (no live keys configured
-  yet): `bls_cpi`, `bls_avg_prices`, `usda_ams` (SCAFFOLD — endpoints
-  unverified), `usda_nass_prices`, `eia_energy`, `fred_consumer`.
+  yet): `bls_cpi`, `bls_avg_prices`, `usda_ams` (MARS v1.2 API verified live),
+  `usda_nass_prices`, `eia_energy`, `fred_consumer`.
 - Stage 2: `openfoodfacts` (keyless) written.
 - Stage 3 and retail tier (Kroger/Walmart/eBay) planned; see
   `docs/PIPELINE_CATALOG.md` and `docs/SOURCES.md`.

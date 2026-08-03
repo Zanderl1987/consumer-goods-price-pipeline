@@ -79,8 +79,9 @@ enforce this):
 - `validate.py` defaults `value_ranges` to a WARNING so new tables don't fail
   the run while you're still calibrating ranges — move to ERROR only when the
   range is proven stable.
-- USDA AMS (`usda_ams_pipeline.py`) is a scaffold — the
-  `mymarketnews.ams.usda.gov/api/v1` base URL and report slugs are marked
-  UNVERIFIED and need a live check with a real key before it's trusted.
+- USDA AMS (`usda_ams_pipeline.py`): base URL was updated to MARS v1.2
+  (`https://marsapi.ams.usda.gov/services/v1.2`, HTTP Basic auth, 180-day
+  request windows) after live verification on 2026-08-03. The FVWV wholesale
+  terminal report slug is still pending a live check with a real key.
 - Keep `storage/**` gitignored (data files, logs); only the empty directory
   skeleton is committed.
