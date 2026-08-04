@@ -85,12 +85,24 @@ original backlog is now built.
       neither table actually produces (`cents_per_kwh` / `price` instead).
 - [x] ~~Register FRED_API_KEY~~ — found in the same doc, live-verified:
       1,280 + 118 rows. Worked first try, no code changes needed.
-- [ ] `USDA_AMS_API_KEY` / `USDA_NASS_API_KEY` still needed — a "USDA API
-      KEY" found in the same local credentials doc turned out to be for
-      **FoodData Central** (nutrition data), not NASS QuickStats or AMS
-      Market News; neither accepted it (both 401'd). Still need separate
-      registration for these two — see the earlier guidance (NASS is a
-      fast email-only form, AMS Market News is a real account signup).
+- [x] ~~Register USDA_NASS_API_KEY~~ — user registered a real NASS key
+      2026-08-04 (a "USDA API KEY" found earlier in a local credentials doc
+      turned out to be for FoodData Central, unrelated). Live-verified: 4,101
+      prices_received rows (19/19 commodities) + 923 prices_paid rows (6/6).
+      **This was the pipeline's first-ever live run** and surfaced real
+      bugs in `usda_nass_prices_pipeline.py`: a single sector/group filter
+      couldn't cover a commodity list spanning livestock/dairy/poultry/
+      crops/fruit-veg (fixed: filter on `statisticcat_desc="PRICE RECEIVED"`
+      instead, drop sector/group); two PRICES_PAID commodity names
+      ("ANIMAL DRUGS", "BABY CHICKS") don't exist in NASS's taxonomy at all
+      (swapped for real ones); date was built from `year` alone, collapsing
+      up to 12 monthly observations per commodity/year into one row — once
+      curated.py deduped on (commodity, date) this destroyed 99%+ of the
+      data (35,210→42 rows) before the fix (now uses the real month via
+      `begin_code`, natural key gained `description`).
+- [ ] `USDA_AMS_API_KEY` still needed — real account signup at
+      mymarketnews.ams.usda.gov (not an instant-key form like the others),
+      key lives under "My Profile" once logged in.
 
 ## Deferred
 

@@ -196,12 +196,74 @@ it:
   currently in this pipeline's registry. NASS/AMS still need their own
   separate registration.
 
+## Part 5 (same day): NASS activated, its first-ever live run also had bugs
+
+User registered a real USDA NASS QuickStats key themselves and pasted it.
+Live-tested it against both NASS and AMS before trusting it — NASS 200s,
+AMS still 401s ("User is not found"), confirming the two keys are genuinely
+separate and non-interchangeable (matches the earlier FoodData Central key
+turning out to be neither).
+
+Same story as EIA: `usda_nass_prices_pipeline.py` had never run against a
+real key before, so its bugs had never actually executed. Ran it live, got
+suspicious results (a 99%+ dedup collapse: 35,210 raw rows -> 42 curated),
+and investigated rather than trusting the first pass:
+
+- **Group-filter bug**: the pipeline fetched a 20-commodity list (spanning
+  livestock, dairy, poultry, field crops, fruit & tree nuts, vegetables)
+  using one `sector_desc`+`group_desc` filter per call, which can only ever
+  match one NASS group — every commodity outside that group 400'd. Fixed by
+  dropping sector/group filters and using `statisticcat_desc="PRICE
+  RECEIVED"` instead, which NASS resolves correctly per-commodity on its
+  own (verified live against MILK/EGGS/AVOCADOS/TOMATOES/CHICKENS — all
+  200'd cleanly once sector/group were dropped).
+- **Wrong commodity names**: PRICES_PAID had "ANIMAL DRUGS" and "BABY
+  CHICKS", neither of which exists anywhere in NASS's real taxonomy (400
+  on every request, even with the correct statisticcat). Queried the real
+  list of PRICES-PAID commodity_desc values live and swapped in ones that
+  actually exist (POULTRY TOTALS, ANIMAL SECTOR) covering similar ground.
+  Also needed the real statisticcat_desc for prices paid,
+  `"INDEX FOR PRICE PAID, 2011"`, not a guessed "PRICE PAID".
+- **The actual data-loss bug**: `date` was built from `year` alone (always
+  `YYYY-01-01`), even though the underlying series is monthly
+  (`freq_desc="MONTHLY"`, with the real month in `begin_code`). Every
+  commodity/year had up to 12 real monthly observations silently colliding
+  onto one date, and `curated.py`'s natural key was just
+  `["commodity", "date"]` — so compaction crushed 35,210 rows down to 42.
+  Fixed to use `begin_code` as the real month, and added `description` to
+  the natural key (multiple named series like PRICE RECEIVED "$/BU" vs
+  "PCT OF PARITY" can share a commodity/date).
+- **Redundant entry**: "BROILERS" isn't its own `commodity_desc` — it's a
+  `class_desc` *under* `commodity_desc="CHICKENS"`, which already returns
+  those rows. Removed rather than "fixed."
+
+Live-verified after all fixes: 4,101 prices_received rows (19/19
+commodities) + 923 prices_paid rows (6/6), 6-7% dedup this time (real
+restatements, not silent data loss). Deleted the stale bad raw/curated
+files from the buggy first run before re-running clean. Committed + pushed
+(`e4d24ae`).
+
+**Pattern now confirmed across three pipelines this session (CMS, EIA,
+NASS)**: a keyed pipeline that's never had a real key is functionally
+unverified code, no matter how long it's been sitting in the registry or
+how reasonable it reads. "First real key" = "first real test" — expect
+bugs, and a suspiciously large dedup/row-count change is usually a real
+signal, not noise, worth investigating before trusting the data.
+
+User also offered live Google Drive access to a Google Doc version of
+their password-vault document (the source of the EIA/FRED/USDA keys, a
+static `.docx` in Downloads for this session). Flagged that Drive access
+would be a standing OAuth connection vs. today's one-time scoped file
+read, and asked which they wanted before connecting anything. **User chose
+to defer** — noted in the `project_consumer_goods_pipeline` memory file to
+resurface if credentials come up again, not added to this repo's TODO.md
+since it isn't a pipeline-source item.
+
 ## Open work (next session)
 
 - Register `USDA_AMS_API_KEY` (real account signup at
-  mymarketnews.ams.usda.gov) and `USDA_NASS_API_KEY` (fast email-only form
-  at quickstats.nass.usda.gov/api) to activate the last two SKIPping
-  Stage-1 pipelines.
+  mymarketnews.ams.usda.gov, key under "My Profile") to activate the last
+  SKIPping Stage-1 pipeline.
 - Best Buy: revisit if/when a real non-free-provider domain email is
   available, or if Best Buy opens an individual-developer path.
 - eBay Browse API (needs a Buy-API license beyond the App ID) and hospital
@@ -212,3 +274,6 @@ it:
   gas-grade series, PPI Used Motor Vehicles) — pipeline handles them
   gracefully (skips, doesn't crash) but those specific series never write
   data. Worth a cleanup pass if those series matter.
+- Given the CMS/EIA/NASS pattern above, worth a skeptical look at
+  `usda_ams_pipeline.py` too once `USDA_AMS_API_KEY` exists — it's in the
+  same boat (never run against a real key).
