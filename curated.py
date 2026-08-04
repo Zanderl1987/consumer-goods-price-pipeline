@@ -74,7 +74,7 @@ KEYS: dict[str, list[str]] = {
     "kroger_products":        ["upc", "store_id", "fetched_at"],
     "walmart_products":       ["product_id", "fetched_at"],
     "ebay_listings":          ["item_id", "fetched_at"],
-    "openfoodfacts_prices":   ["code", "fetched_at"],
+    "openfoodfacts_prices":   ["id"],
     # Healthcare
     "cms_drug_pricing":       ["ndc", "year", "labeler_name", "drug_name"],
     "hospital_prices":        ["hospital_name", "cms_certification_number", "item_name", "payer"],

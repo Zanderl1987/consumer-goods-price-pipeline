@@ -173,8 +173,9 @@ SCHEMAS: dict[str, dict] = {
         "value_ranges": {"price": (0, 10000000)},
     },
     "openfoodfacts_prices": {
-        "required":    ["code", "product_name", "price", "fetched_at"],
-        "critical_nn": ["code", "price"],
+        "required":    ["id", "price", "currency", "date", "fetched_at"],
+        "critical_nn": ["id", "price", "currency", "date"],
+        "date_col":    "date",
         "value_ranges": {"price": (0, 100000)},
     },
     "cms_drug_pricing": {

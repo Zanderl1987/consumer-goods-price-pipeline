@@ -24,7 +24,7 @@ free API key.
 
 | Pipeline | Table(s) | Covers | Key |
 |---|---|---|---|
-| `openfoodfacts_pipeline.py` | `openfoodfacts_prices` | Crowdsourced grocery product prices from Open Food Facts | keyless |
+| `openfoodfacts_pipeline.py` | `openfoodfacts_prices` | Open Prices — real barcode/category price observations from receipts + price tags, via the Hugging Face Parquet snapshot (re-pointed 2026-08-04; the old version scraped the sparse main product DB) | keyless |
 
 ## Stage 3 — planned
 

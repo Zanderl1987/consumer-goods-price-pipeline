@@ -123,11 +123,11 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="openfoodfacts",
         file="openfoodfacts_pipeline.py",
-        desc="Open Food Facts — crowdsourced grocery product prices (keyless)",
+        desc="Open Prices — real barcode/category-level price observations, receipts + price tags (keyless)",
         stage=2,
         tables=["openfoodfacts_prices"],
         backfill_args=["--backfill"],
-        timeout=900,
+        timeout=300,
     ),
     PipelineSpec(
         name="statcan_retail_prices",

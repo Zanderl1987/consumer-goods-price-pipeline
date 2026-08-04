@@ -12,15 +12,19 @@ Source research for consumer-goods price data is complete (see
       (`wfp-food-prices`) is a dead snapshot frozen at 2021-08 — replaced by
       `global-wfp-food-prices` (verified live via HDX's own metadata), which
       is what the pipeline actually reads. See docs/SOURCES.md.
+- [x] **Re-point Open Food Facts at Open Prices** — `openfoodfacts_prices`
+      now reads the Hugging Face `openfoodfacts/open-prices` Parquet snapshot
+      (285k real barcode + category price observations). **Correction found
+      during build:** the "3 gzipped JSONL dumps" SOURCES.md assumed don't
+      exist — prices.openfoodfacts.org has no bulk export endpoint at all
+      (checked every route under `/api/v1/`). ODbL, attribution: Open Food
+      Facts contributors.
 
 ## In Progress / Next Builds (pending user prompt)
 
 - [ ] **Best Buy products pipeline** — new table (`bestbuy_products`), free
       instant key (BESTBUY_API_KEY), electronics prices incl. sale/clearance.
       Add wiring + tests.
-- [ ] **Re-point Open Food Facts at Open Prices** — `openfoodfacts_prices` should
-      read the Open Prices JSONL dumps (barcode-level price observations), not
-      the sparse price fields on the main product DB. Confirm ODbL attribution.
 
 ## Optional / Planned (all keyless, cheap to add)
 
