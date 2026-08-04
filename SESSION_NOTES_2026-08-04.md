@@ -67,9 +67,42 @@ them — not as ground truth.
   returns with a localized `filter.locationId`) — CATALOG/SCHEMAS/KEYS rows
   already reserved, no pipeline file or run_all.py spec yet.
 
-## Open work (next session, awaiting user go-ahead)
+## Part 2 (same day): cleared the rest of the backlog
 
-- Best Buy products pipeline (free instant key).
-- Kroger products pipeline (free OAuth2 key; needs a ZIP/region decision first).
-- Optional/keyless: Eurostat HICP, OECD CPI, FAO, World Bank Pink Sheet, IMF,
-  CMS drug pricing — all still reserved-but-unbuilt in the registry.
+User asked to build everything remaining, Best Buy last. Built all 7
+remaining sources: Kroger, Eurostat HICP, OECD CPI, FAO (food + meat),
+World Bank Pink Sheet, IMF PCPS, CMS drug pricing, Best Buy. Same
+verify-live-then-build loop as part 1 — every one of them needed at least
+one correction vs. the SOURCES.md research pass or the originally-reserved
+CATALOG/KEYS wiring:
+
+- **eurostat_hicp**: reserved table name was a typo (`eurostat_hpcp`),
+  renamed everywhere including the storage directory.
+- **fao_food_prices/fao_meat_prices**: reserved natural key was item-only;
+  real data is per-country, added `area` to the key.
+- **imf_commodities**: COUNTRY dimension code is `G001`, not the standard
+  SDMX "world" code `W00` — every generic doc/blog got this wrong; only
+  found by reading back real dimension values from a full-wildcard query.
+- **cms_drug_pricing**: reserved key assumed an NDC column that doesn't
+  exist in this dataset (it's brand/generic/manufacturer-level). This build
+  also caught a real repo-wide bug: a domain column named `year` collides
+  with `write_partitioned`'s Hive `year=YYYY/` partition and gets silently
+  overwritten on read-back (61,405 rows all read back as year=2026 instead
+  of 2020-2024). Renamed to `spending_year`, documented in CLAUDE.md
+  gotchas so it doesn't happen again.
+- **kroger, bestbuy**: both built and fully wired but SKIP cleanly at
+  runtime — no free key registered/configured yet. Kroger picked 5
+  representative US ZIPs since the API requires a store-scoped
+  `filter.locationId`; no single "right" ZIP exists so this was a
+  reasonable-default judgment call, not a live-verified fact.
+
+Repo state: 72/72 tests pass, `run_all.py --dry-run` registers all 22
+pipelines cleanly, `curated.py --check` and `validate.py` both clean (0
+errors) across every new table. Committed + pushed (`f02b444`).
+
+## Open work (next session)
+
+- Register `KROGER_CLIENT_ID`/`SECRET` and `BESTBUY_API_KEY` (both free) to
+  activate the two SKIPping pipelines.
+- eBay Browse API (needs a Buy-API license beyond the App ID) and hospital
+  price transparency (needs an aggregator) remain unbuilt — see TODO.md.
