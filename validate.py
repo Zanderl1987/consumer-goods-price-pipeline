@@ -203,6 +203,12 @@ SCHEMAS: dict[str, dict] = {
         "date_col":    "date",
         "value_ranges": {"price": (0, 100000)},
     },
+    "wfp_food_prices": {
+        "required":    ["countryiso3", "commodity", "date", "price", "usdprice"],
+        "critical_nn": ["countryiso3", "commodity", "date", "price"],
+        "date_col":    "date",
+        "value_ranges": {"usdprice": (0, 100000)},
+    },
     "fao_food_prices": {
         "required":    ["item", "date", "value"],
         "critical_nn": ["item", "date", "value"],

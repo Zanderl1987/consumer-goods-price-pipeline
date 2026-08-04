@@ -138,6 +138,15 @@ PIPELINES: list[PipelineSpec] = [
         backfill_args=["--backfill"],
         timeout=300,
     ),
+    PipelineSpec(
+        name="wfp_food_prices",
+        file="wfp_food_prices_pipeline.py",
+        desc="WFP global food prices — 98 countries, per-market retail/wholesale (keyless)",
+        stage=1,
+        tables=["wfp_food_prices"],
+        backfill_args=["--backfill"],
+        timeout=1800,
+    ),
     # ── Stage 3 — Derived ────────────────────────────────────────────────────
     # Reserved for basket/aggregate builders as data accumulates.
     #
@@ -145,8 +154,7 @@ PIPELINES: list[PipelineSpec] = [
     #   eurostat_hpcp, oecd_cpi, fao_prices, worldbank_pinksheet,
     #   imf_commodities, cms_drug_pricing, ebay (Browse API),
     #   walmart (Product API), kroger (API), amazon (price history),
-    #   numbeo (cost of living), hospital_prices, bestbuy_products,
-    #   wfp_food_prices.
+    #   numbeo (cost of living), hospital_prices, bestbuy_products.
 ]
 
 

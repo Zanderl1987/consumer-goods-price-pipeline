@@ -17,6 +17,8 @@ free API key.
 | `usda_nass_prices_pipeline.py` | `usda_prices_received`, `usda_prices_paid` | NASS QuickStats — farm prices received (commodities) and paid (inputs) | `USDA_NASS_API_KEY` |
 | `eia_energy_prices_pipeline.py` | `eia_gas_retail`, `eia_gas_spot`, `eia_electricity_price`, `eia_natgas_price` | Retail gasoline/diesel, spot prices, electricity price, natural gas citygate | `EIA_API_KEY` |
 | `fred_consumer_prices_pipeline.py` | `fred_consumer_prices`, `fred_used_cars` | FRED consumer series — used-car prices, tires, housing, retail aggregates | `FRED_API_KEY` |
+| `statcan_retail_prices_pipeline.py` | `statcan_retail_prices` | Statistics Canada retail prices — absolute CAD prices, milk to household goods | keyless |
+| `wfp_food_prices_pipeline.py` | `wfp_food_prices` | WFP global food prices — 98 countries, per-market retail/wholesale. Reads `global-wfp-food-prices` on HDX, NOT the deprecated `wfp-food-prices` slug (frozen at 2021-08) | keyless |
 
 ## Stage 2 — retail / e-commerce / crowdsourced
 
@@ -34,7 +36,6 @@ comment block; CATALOG rows, SCHEMAS, KEYS already wired in `query.py`,
 |---|---|---|---|
 | `eurostat_hpcp_pipeline.py` | `eurostat_hpcp` | EU Harmonised Index of Consumer Prices | keyless |
 | `oecd_cpi_pipeline.py` | `oecd_cpi` | OECD CPI (member countries) | keyless |
-| `statcan_retail_prices_pipeline.py` | `statcan_retail_prices` | Statistics Canada retail prices | keyless |
 | `fao_prices_pipeline.py` | `fao_food_prices`, `fao_meat_prices` | FAO food price indices, meat prices | keyless |
 | `worldbank_pinksheet_pipeline.py` | `worldbank_pinksheet` | World Bank "Pink Sheet" commodity prices | keyless |
 | `imf_commodities_pipeline.py` | `imf_commodities` | IMF primary commodity prices | keyless |
@@ -44,6 +45,7 @@ comment block; CATALOG rows, SCHEMAS, KEYS already wired in `query.py`,
 | `kroger_pipeline.py` | `kroger_products` | Kroger product API (groceries, household) | `KROGER_CLIENT_ID`/`SECRET` |
 | `numbeo_pipeline.py` | (TBD) | Cost-of-living price data | keyless |
 | `hospital_prices_pipeline.py` | `hospital_prices` | Hospital price transparency files | keyless |
+| `bestbuy_products_pipeline.py` | (TBD: `bestbuy_products`) | Best Buy electronics prices | `BESTBUY_API_KEY` |
 
 ## Validation coverage
 

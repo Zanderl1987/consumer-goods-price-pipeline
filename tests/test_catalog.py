@@ -31,6 +31,7 @@ EXPECTED_TABLES = [
     "eurostat_hpcp",
     "oecd_cpi",
     "statcan_retail_prices",
+    "wfp_food_prices",
     "fao_food_prices",
     "fao_meat_prices",
     "worldbank_pinksheet",

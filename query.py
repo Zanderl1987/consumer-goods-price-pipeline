@@ -83,6 +83,7 @@ CATALOG: dict[str, str] = {
     "eurostat_hpcp":            _glob("eurostat/hpcp/**/*.parquet"),
     "oecd_cpi":                 _glob("oecd/cpi/**/*.parquet"),
     "statcan_retail_prices":    _glob("statcan/retail_prices/**/*.parquet"),
+    "wfp_food_prices":          _glob("wfp/food_prices/**/*.parquet"),
     "fao_food_prices":          _glob("fao/food_prices/**/*.parquet"),
     "fao_meat_prices":          _glob("fao/meat_prices/**/*.parquet"),
     "worldbank_pinksheet":      _glob("worldbank/pinksheet/**/*.parquet"),

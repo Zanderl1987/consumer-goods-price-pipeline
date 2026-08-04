@@ -82,6 +82,7 @@ KEYS: dict[str, list[str]] = {
     "eurostat_hpcp":          ["series_id", "date"],
     "oecd_cpi":               ["series_id", "date"],
     "statcan_retail_prices":  ["item", "city", "date"],
+    "wfp_food_prices":        ["market_id", "commodity_id", "date", "pricetype"],
     "fao_food_prices":        ["item", "date"],
     "fao_meat_prices":        ["item", "date"],
     "worldbank_pinksheet":    ["series_id", "date"],

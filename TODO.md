@@ -1,19 +1,20 @@
-# TODO — 2026-08-03
+# TODO — 2026-08-04
 
 Source research for consumer-goods price data is complete (see
-`docs/SOURCES.md`, verified 2026-08-03). These are the agreed next builds,
-awaiting the user's go-ahead.
+`docs/SOURCES.md`, verified 2026-08-03). These are the agreed next builds.
+
+## Done
+
+- [x] **StatCan retail-prices pipeline** — `statcan_retail_prices`. Built,
+      wired, live-verified 2026-08-04 (12,955 rows, 110 items, 13 geographies).
+- [x] **WFP HDX food-prices pipeline** — `wfp_food_prices`. Built 2026-08-04.
+      **Correction found during build:** the dataset SOURCES.md pointed at
+      (`wfp-food-prices`) is a dead snapshot frozen at 2021-08 — replaced by
+      `global-wfp-food-prices` (verified live via HDX's own metadata), which
+      is what the pipeline actually reads. See docs/SOURCES.md.
 
 ## In Progress / Next Builds (pending user prompt)
 
-- [ ] **StatCan retail-prices pipeline** — `statcan_retail_prices`. Keyless,
-      absolute CAD retail price levels (table 18-10-0245-01/02: milk, bread,
-      ground beef, eggs, produce). Top candidate. Wire CATALOG `statcan_retail_prices`
-      (row already exists), SCHEMAS, KEYS, run_all spec (keyless), tests, docs.
-- [ ] **WFP HDX food-prices pipeline** — new table (`wfp_food_prices`), keyless,
-      weekly, 76 countries / 1,500+ markets via
-      https://data.humdata.org/dataset/wfp-food-prices. Add to CATALOG/SCHEMAS/
-      KEYS/EXPECTED_TABLES/docs.
 - [ ] **Best Buy products pipeline** — new table (`bestbuy_products`), free
       instant key (BESTBUY_API_KEY), electronics prices incl. sale/clearance.
       Add wiring + tests.
