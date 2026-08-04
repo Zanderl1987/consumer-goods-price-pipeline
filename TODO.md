@@ -25,6 +25,12 @@ Source research for consumer-goods price data is complete (see
 - [ ] **Best Buy products pipeline** — new table (`bestbuy_products`), free
       instant key (BESTBUY_API_KEY), electronics prices incl. sale/clearance.
       Add wiring + tests.
+- [ ] **Kroger products pipeline** — `kroger_products`. CATALOG/SCHEMAS/KEYS
+      rows already reserved (not yet built — no `kroger_pipeline.py`, no
+      run_all.py PipelineSpec). Needs free OAuth2 client-credentials
+      (`KROGER_CLIENT_ID`/`SECRET`, register at developer.kroger.com) — price
+      + aisle data only returns with a ZIP-localized `filter.locationId`, so
+      needs a decision on which ZIP(s)/region(s) to track before building.
 
 ## Optional / Planned (all keyless, cheap to add)
 
