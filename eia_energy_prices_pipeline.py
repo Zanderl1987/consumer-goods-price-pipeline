@@ -171,9 +171,17 @@ def fetch_gas_spot(start_date=None):
 
 
 def fetch_electricity(start_date=None):
-    """Average retail electricity price by state / sector (monthly, cents/kWh)."""
+    """Average retail electricity price by state / sector (monthly, cents/kWh).
+
+    The retail-sales route's `data` dict only accepts "revenue", "sales",
+    "price", or "customers" -- "value" 400s ("Invalid data 'value'
+    provided", found live 2026-08-04, first real run of this pipeline
+    since a key was configured). Requesting data[]=price also renames the
+    observation column itself to "price" (not "value") and the units
+    column to "price-units" (not "units").
+    """
     base = {
-        "api_key": EIA_API_KEY, "data[]": "value", "frequency": "monthly",
+        "api_key": EIA_API_KEY, "data[]": "price", "frequency": "monthly",
         "sort[0][column]": "period", "sort[0][direction]": "asc",
     }
     rows = fetch_paginated("electricity/retail-sales/data/", base,
@@ -181,7 +189,7 @@ def fetch_electricity(start_date=None):
     if not rows:
         return None
     df = pd.DataFrame(rows)
-    df = df.rename(columns={"period": "date", "value": "cents_per_kwh"})
+    df = df.rename(columns={"period": "date", "price": "cents_per_kwh", "price-units": "units"})
     df["date"] = pd.to_datetime(df["date"])
     df["cents_per_kwh"] = pd.to_numeric(df["cents_per_kwh"], errors="coerce")
     df["series_id"] = df["stateid"] + "-" + df["sectorid"].astype(str)
@@ -192,7 +200,15 @@ def fetch_electricity(start_date=None):
 
 
 def fetch_natgas_price(start_date=None):
-    """Citygate/wellhead/residential natural gas prices by state (monthly)."""
+    """Citygate/wellhead/residential natural gas prices by area (monthly).
+
+    This route's facets are duoarea/product/process/series -- there is no
+    "stateid" facet or column (found live 2026-08-04, first real run of
+    this pipeline since a key was configured; the code had assumed the
+    same "stateid" shape as the electricity route). `series` is already a
+    unique per-area/process code, so it's used directly as series_id
+    instead of hand-building one from a nonexistent column.
+    """
     base = {
         "api_key": EIA_API_KEY, "data[]": "value", "frequency": "monthly",
         "sort[0][column]": "period", "sort[0][direction]": "asc",
@@ -202,12 +218,12 @@ def fetch_natgas_price(start_date=None):
     if not rows:
         return None
     df = pd.DataFrame(rows)
-    df = df.rename(columns={"period": "date", "value": "price"})
+    df = df.rename(columns={"period": "date", "value": "price", "series": "series_id"})
     df["date"] = pd.to_datetime(df["date"])
     df["price"] = pd.to_numeric(df["price"], errors="coerce")
-    df["series_id"] = df["process"] + "-" + df["stateid"].astype(str)
     df["fetched_at"] = datetime.datetime.utcnow().isoformat()
-    wanted = ["date", "stateid", "process", "series_id", "price", "units", "fetched_at"]
+    wanted = ["date", "duoarea", "process", "series_id", "series-description",
+              "price", "units", "fetched_at"]
     cols = [c for c in wanted if c in df.columns]
     return df[cols].dropna(subset=["price"]).sort_values(["series_id", "date"])
 

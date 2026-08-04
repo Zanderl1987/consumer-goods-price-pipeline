@@ -148,14 +148,16 @@ SCHEMAS: dict[str, dict] = {
         "value_ranges": {"price_usd_gallon": (0, 20)},
     },
     "eia_electricity_price": {
-        "required":    ["series_id", "date", "value"],
-        "critical_nn": ["series_id", "date", "value"],
+        "required":    ["series_id", "date", "cents_per_kwh"],
+        "critical_nn": ["series_id", "date", "cents_per_kwh"],
         "date_col":    "date",
+        "value_ranges": {"cents_per_kwh": (0, 200)},
     },
     "eia_natgas_price": {
-        "required":    ["series_id", "date", "value"],
-        "critical_nn": ["series_id", "date", "value"],
+        "required":    ["series_id", "date", "price"],
+        "critical_nn": ["series_id", "date", "price"],
         "date_col":    "date",
+        "value_ranges": {"price": (0, 1000)},
     },
     "kroger_products": {
         "required":    ["upc", "product_name", "price", "fetched_at"],
