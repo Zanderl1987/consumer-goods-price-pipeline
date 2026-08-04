@@ -129,14 +129,24 @@ PIPELINES: list[PipelineSpec] = [
         backfill_args=["--backfill"],
         timeout=900,
     ),
+    PipelineSpec(
+        name="statcan_retail_prices",
+        file="statcan_retail_prices_pipeline.py",
+        desc="Statistics Canada retail prices — absolute CAD prices, milk to household goods (keyless)",
+        stage=1,
+        tables=["statcan_retail_prices"],
+        backfill_args=["--backfill"],
+        timeout=300,
+    ),
     # ── Stage 3 — Derived ────────────────────────────────────────────────────
     # Reserved for basket/aggregate builders as data accumulates.
     #
     # PLANNED (add once endpoints are confirmed — see docs/SOURCES.md):
-    #   eurostat_hpcp, oecd_cpi, statcan_retail_prices, fao_prices,
-    #   worldbank_pinksheet, imf_commodities, cms_drug_pricing,
-    #   ebay (Browse API), walmart (Product API), kroger (API),
-    #   amazon (price history), numbeo (cost of living), hospital_prices.
+    #   eurostat_hpcp, oecd_cpi, fao_prices, worldbank_pinksheet,
+    #   imf_commodities, cms_drug_pricing, ebay (Browse API),
+    #   walmart (Product API), kroger (API), amazon (price history),
+    #   numbeo (cost of living), hospital_prices, bestbuy_products,
+    #   wfp_food_prices.
 ]
 
 
