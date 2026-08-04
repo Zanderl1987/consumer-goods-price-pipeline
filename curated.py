@@ -72,19 +72,24 @@ KEYS: dict[str, list[str]] = {
     "eia_natgas_price":       ["series_id", "date"],
     # Retail / e-commerce — one price observation per product per snapshot
     "kroger_products":        ["upc", "store_id", "fetched_at"],
+    "bestbuy_products":       ["sku", "fetched_at"],
     "walmart_products":       ["product_id", "fetched_at"],
     "ebay_listings":          ["item_id", "fetched_at"],
     "openfoodfacts_prices":   ["id"],
-    # Healthcare
-    "cms_drug_pricing":       ["ndc", "year", "labeler_name", "drug_name"],
+    # Healthcare — CMS Part D Spending by Drug has no NDC column (it's
+    # aggregated to brand/generic/manufacturer); corrected from the
+    # originally-reserved NDC-based key after live verification 2026-08-04.
+    "cms_drug_pricing":       ["brand_name", "generic_name", "manufacturer", "spending_year"],
     "hospital_prices":        ["hospital_name", "cms_certification_number", "item_name", "payer"],
     # International — one value per series/date
-    "eurostat_hpcp":          ["series_id", "date"],
+    "eurostat_hicp":          ["series_id", "date"],
     "oecd_cpi":               ["series_id", "date"],
     "statcan_retail_prices":  ["item", "city", "date"],
     "wfp_food_prices":        ["market_id", "commodity_id", "date", "pricetype"],
-    "fao_food_prices":        ["item", "date"],
-    "fao_meat_prices":        ["item", "date"],
+    # FAO CP/PP domains are per-country (area); corrected from the
+    # originally-reserved item-only key after live verification 2026-08-04.
+    "fao_food_prices":        ["area", "item", "date"],
+    "fao_meat_prices":        ["area", "item", "date"],
     "worldbank_pinksheet":    ["series_id", "date"],
     "imf_commodities":        ["series_id", "date"],
     # FRED — one value per series per date

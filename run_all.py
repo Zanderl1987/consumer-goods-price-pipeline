@@ -147,14 +147,86 @@ PIPELINES: list[PipelineSpec] = [
         backfill_args=["--backfill"],
         timeout=1800,
     ),
+    PipelineSpec(
+        name="kroger",
+        file="kroger_pipeline.py",
+        desc="Kroger grocery catalog prices, ZIP-localized (5 tracked regions)",
+        stage=2,
+        tables=["kroger_products"],
+        requires_env=["KROGER_CLIENT_ID", "KROGER_CLIENT_SECRET"],
+        backfill_args=["--backfill"],
+        timeout=900,
+    ),
+    PipelineSpec(
+        name="eurostat_hicp",
+        file="eurostat_hicp_pipeline.py",
+        desc="Eurostat Harmonised Index of Consumer Prices — EU/EFTA, indices only (keyless)",
+        stage=1,
+        tables=["eurostat_hicp"],
+        backfill_args=["--backfill"],
+        timeout=300,
+    ),
+    PipelineSpec(
+        name="oecd_cpi",
+        file="oecd_cpi_pipeline.py",
+        desc="OECD consumer price indices, ~38 economies (keyless)",
+        stage=1,
+        tables=["oecd_cpi"],
+        backfill_args=["--backfill"],
+        timeout=300,
+    ),
+    PipelineSpec(
+        name="fao_prices",
+        file="fao_prices_pipeline.py",
+        desc="FAO national food-CPI + meat/livestock producer prices (keyless, CC BY-NC-SA)",
+        stage=1,
+        tables=["fao_food_prices", "fao_meat_prices"],
+        backfill_args=["--backfill"],
+        timeout=600,
+    ),
+    PipelineSpec(
+        name="worldbank_pinksheet",
+        file="worldbank_pinksheet_pipeline.py",
+        desc="World Bank Pink Sheet — ~70 global commodity benchmark prices (keyless)",
+        stage=1,
+        tables=["worldbank_pinksheet"],
+        backfill_args=["--backfill"],
+        timeout=300,
+    ),
+    PipelineSpec(
+        name="imf_commodities",
+        file="imf_commodities_pipeline.py",
+        desc="IMF PCPS primary commodity benchmark prices (keyless)",
+        stage=1,
+        tables=["imf_commodities"],
+        backfill_args=["--backfill"],
+        timeout=300,
+    ),
+    PipelineSpec(
+        name="bestbuy",
+        file="bestbuy_products_pipeline.py",
+        desc="Best Buy electronics/appliance prices incl. sale/clearance",
+        stage=2,
+        tables=["bestbuy_products"],
+        requires_env=["BESTBUY_API_KEY"],
+        backfill_args=["--backfill"],
+        timeout=600,
+    ),
+    PipelineSpec(
+        name="cms_drug_pricing",
+        file="cms_drug_pricing_pipeline.py",
+        desc="CMS Medicare Part D spending by drug — program cost, not retail (keyless)",
+        stage=1,
+        tables=["cms_drug_pricing"],
+        backfill_args=["--backfill"],
+        timeout=300,
+    ),
     # ── Stage 3 — Derived ────────────────────────────────────────────────────
     # Reserved for basket/aggregate builders as data accumulates.
     #
     # PLANNED (add once endpoints are confirmed — see docs/SOURCES.md):
-    #   eurostat_hpcp, oecd_cpi, fao_prices, worldbank_pinksheet,
-    #   imf_commodities, cms_drug_pricing, ebay (Browse API),
-    #   walmart (Product API), kroger (API), amazon (price history),
-    #   numbeo (cost of living), hospital_prices, bestbuy_products.
+    #   ebay (Browse API), walmart (Product API, no free tier — rejected),
+    #   amazon (rejected), numbeo (paid — rejected), hospital_prices.
 ]
 
 

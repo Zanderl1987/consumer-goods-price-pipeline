@@ -1,7 +1,8 @@
 # TODO — 2026-08-04
 
 Source research for consumer-goods price data is complete (see
-`docs/SOURCES.md`, verified 2026-08-03). These are the agreed next builds.
+`docs/SOURCES.md`, verified 2026-08-03/04). Every keyless source from the
+original backlog is now built.
 
 ## Done
 
@@ -19,27 +20,60 @@ Source research for consumer-goods price data is complete (see
       exist — prices.openfoodfacts.org has no bulk export endpoint at all
       (checked every route under `/api/v1/`). ODbL, attribution: Open Food
       Facts contributors.
+- [x] **Kroger products pipeline** — `kroger_pipeline.py` built 2026-08-04
+      (OAuth2 client-credentials, 5 tracked ZIPs, 20 search terms). Fully
+      wired into run_all.py/query.py/curated.py/validate.py/tests. **SKIPs
+      cleanly at runtime** — no `KROGER_CLIENT_ID`/`SECRET` configured yet;
+      register free at developer.kroger.com to activate.
+- [x] **Eurostat HICP pipeline** — `eurostat_hicp` (renamed from the
+      originally-reserved `eurostat_hpcp` typo). Built 2026-08-04,
+      live-verified: 1,352 rows (incremental), 43 geos, all-items + food.
+- [x] **OECD CPI pipeline** — `oecd_cpi`. Built 2026-08-04, live-verified:
+      1,645 rows (incremental), 47 countries. New sdmx.oecd.org host.
+- [x] **FAO prices pipeline** — `fao_food_prices` + `fao_meat_prices`. Built
+      2026-08-04, live-verified: 32,597 food-CPI rows (241 areas) + 1,074
+      meat producer-price rows (95 areas, 26 items). **Correction found
+      during build:** natural key needed `area` added (originally-reserved
+      key was item-only, which would have collided across countries).
+- [x] **World Bank Pink Sheet pipeline** — `worldbank_pinksheet`. Built
+      2026-08-04, live-verified: 1,494 rows (incremental), 68 commodities.
+      Resolves the current rotating-hash download URL from the landing page
+      HTML each run rather than hardcoding it.
+- [x] **IMF PCPS pipeline** — `imf_commodities`. Built 2026-08-04,
+      live-verified: 1,452 rows (incremental), 39 indicators. **Correction
+      found during build:** COUNTRY code is `G001`, not the usual SDMX
+      "world" code `W00` — found by reading back real dimension values from
+      a wildcard query.
+- [x] **CMS drug pricing pipeline** — `cms_drug_pricing`. Built 2026-08-04,
+      live-verified: 61,405 rows, 3,508 drugs, 5 years. **Correction found
+      during build:** the dataset has no NDC column (aggregated to
+      brand/generic/manufacturer instead) — natural key corrected from the
+      originally-reserved NDC-based one. Also surfaced a repo-wide gotcha:
+      the domain column had to be named `spending_year`, not `year` — a
+      literal `year` column collides with `write_partitioned`'s Hive
+      `year=YYYY/` partition and silently gets overwritten on read-back.
+      Documented in CLAUDE.md gotchas.
+- [x] **Best Buy products pipeline** — `bestbuy_products`. Built 2026-08-04
+      (keyword search across 15 terms, `format=json`). Fully wired. **SKIPs
+      cleanly at runtime** — no `BESTBUY_API_KEY` configured yet; register
+      free instant key at developer.bestbuy.com/apis to activate.
 
-## In Progress / Next Builds (pending user prompt)
+## Open (needs a free key registered + added to `.env`)
 
-- [ ] **Best Buy products pipeline** — new table (`bestbuy_products`), free
-      instant key (BESTBUY_API_KEY), electronics prices incl. sale/clearance.
-      Add wiring + tests.
-- [ ] **Kroger products pipeline** — `kroger_products`. CATALOG/SCHEMAS/KEYS
-      rows already reserved (not yet built — no `kroger_pipeline.py`, no
-      run_all.py PipelineSpec). Needs free OAuth2 client-credentials
-      (`KROGER_CLIENT_ID`/`SECRET`, register at developer.kroger.com) — price
-      + aisle data only returns with a ZIP-localized `filter.locationId`, so
-      needs a decision on which ZIP(s)/region(s) to track before building.
+- [ ] Register `KROGER_CLIENT_ID`/`KROGER_CLIENT_SECRET` at
+      developer.kroger.com, add to `.env` to activate `kroger_pipeline.py`.
+- [ ] Register `BESTBUY_API_KEY` at developer.bestbuy.com/apis, add to
+      `.env` to activate `bestbuy_products_pipeline.py`.
+- [ ] Same for the existing keyed Stage 1 pipelines still SKIPping:
+      `USDA_AMS_API_KEY`, `USDA_NASS_API_KEY`, `EIA_API_KEY`, `FRED_API_KEY`.
 
-## Optional / Planned (all keyless, cheap to add)
+## Not built (deprioritized / needs more than a free key)
 
-- [ ] Eurostat HICP indices (`eurostat_hpcp`) — indices only; PRC_AVG is dead.
-- [ ] OECD CPI (`oecd_cpi`).
-- [ ] FAO FFPI + FAOSTAT CP (`fao_food_prices`, `fao_meat_prices`) — CC BY-NC-SA.
-- [ ] World Bank Pink Sheet (`worldbank_pinksheet`) — rotating URL hash.
-- [ ] IMF PCPS (`imf_commodities`) — 10 req/5s.
-- [ ] CMS drug pricing (`cms_drug_pricing`) — program prices, not retail.
+- [ ] eBay Browse API (`ebay_listings`) — needs OAuth2 user token + a
+      separate Buy-API license request on top of the App ID.
+- [ ] Hospital price transparency (`hospital_prices`) — no central CMS API;
+      would need an aggregator (Turquoise Health research dataset or
+      PriceTransparency.io, 60 req/min).
 
 ## Explicitly NOT building (verified dead ends)
 
@@ -51,5 +85,6 @@ Census retail trade (sales $ only).
 
 - `usda_ams_pipeline.py` FVWV wholesale-terminal slug unverified (FVWRETAIL
   confirmed). Needs a live run with a real USDA_AMS_API_KEY.
-- No live keys configured yet in `.env` — Stage-1 gov pipelines SKIP until
-  keys are added.
+- IMF PCPS indicator list (`imf_commodities_pipeline.py` INDICATORS) covers
+  ~39 consumer-relevant codes out of 136 total in the CL_PCPS_INDICATOR
+  codelist — expand if a specific commodity is needed later.

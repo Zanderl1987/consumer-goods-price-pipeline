@@ -5,6 +5,7 @@ pyarrow>=14.0
 duckdb>=0.10
 requests>=2.31
 python-dotenv>=1.0
+openpyxl>=3.1   # worldbank_pinksheet_pipeline.py reads the Pink Sheet .xlsx
 
 # Test suite
 pytest>=7.0

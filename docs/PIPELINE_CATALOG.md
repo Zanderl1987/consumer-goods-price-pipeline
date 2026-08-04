@@ -19,12 +19,20 @@ free API key.
 | `fred_consumer_prices_pipeline.py` | `fred_consumer_prices`, `fred_used_cars` | FRED consumer series — used-car prices, tires, housing, retail aggregates | `FRED_API_KEY` |
 | `statcan_retail_prices_pipeline.py` | `statcan_retail_prices` | Statistics Canada retail prices — absolute CAD prices, milk to household goods | keyless |
 | `wfp_food_prices_pipeline.py` | `wfp_food_prices` | WFP global food prices — 98 countries, per-market retail/wholesale. Reads `global-wfp-food-prices` on HDX, NOT the deprecated `wfp-food-prices` slug (frozen at 2021-08) | keyless |
+| `eurostat_hicp_pipeline.py` | `eurostat_hicp` | Eurostat Harmonised Index of Consumer Prices — EU/EFTA, all-items + food COICOP groups. Indices only (PRC_AVG absolute-price dataset is dead) | keyless |
+| `oecd_cpi_pipeline.py` | `oecd_cpi` | OECD consumer price indices, ~38-47 economies, all-items + food. New sdmx.oecd.org host (old stats.oecd.org is dead) | keyless |
+| `fao_prices_pipeline.py` | `fao_food_prices`, `fao_meat_prices` | FAO national food-CPI (per-country monthly) + meat/livestock producer prices (per-country annual, USD/tonne). CC BY-NC-SA 3.0 IGO | keyless |
+| `worldbank_pinksheet_pipeline.py` | `worldbank_pinksheet` | World Bank Pink Sheet — ~70 global commodity benchmark prices, nominal USD since 1960. Resolves the current release's rotating-hash download URL live from the landing page each run | keyless |
+| `imf_commodities_pipeline.py` | `imf_commodities` | IMF PCPS — ~40 tracked commodity benchmark prices (index + USD unit-price), monthly since the 1980s-90s | keyless |
+| `cms_drug_pricing_pipeline.py` | `cms_drug_pricing` | CMS Medicare Part D spending by drug, brand/generic/manufacturer x year. Program reimbursement, not retail cash price | keyless |
 
 ## Stage 2 — retail / e-commerce / crowdsourced
 
 | Pipeline | Table(s) | Covers | Key |
 |---|---|---|---|
 | `openfoodfacts_pipeline.py` | `openfoodfacts_prices` | Open Prices — real barcode/category price observations from receipts + price tags, via the Hugging Face Parquet snapshot (re-pointed 2026-08-04; the old version scraped the sparse main product DB) | keyless |
+| `kroger_pipeline.py` | `kroger_products` | Kroger grocery catalog prices, ZIP-localized to 5 tracked regions (price only returns with a store-scoped `filter.locationId`) | `KROGER_CLIENT_ID`/`SECRET` |
+| `bestbuy_products_pipeline.py` | `bestbuy_products` | Best Buy electronics/appliance prices incl. sale/clearance, ~15 tracked search terms | `BESTBUY_API_KEY` |
 
 ## Stage 3 — planned
 
@@ -34,18 +42,10 @@ comment block; CATALOG rows, SCHEMAS, KEYS already wired in `query.py`,
 
 | Pipeline | Table(s) | Covers | Key |
 |---|---|---|---|
-| `eurostat_hpcp_pipeline.py` | `eurostat_hpcp` | EU Harmonised Index of Consumer Prices | keyless |
-| `oecd_cpi_pipeline.py` | `oecd_cpi` | OECD CPI (member countries) | keyless |
-| `fao_prices_pipeline.py` | `fao_food_prices`, `fao_meat_prices` | FAO food price indices, meat prices | keyless |
-| `worldbank_pinksheet_pipeline.py` | `worldbank_pinksheet` | World Bank "Pink Sheet" commodity prices | keyless |
-| `imf_commodities_pipeline.py` | `imf_commodities` | IMF primary commodity prices | keyless |
-| `cms_drug_pricing_pipeline.py` | `cms_drug_pricing` | CMS drug pricing datasets | keyless |
 | `ebay_pipeline.py` | `ebay_listings` | eBay Browse API — used goods, electronics | `EBAY_APP_ID` |
-| `walmart_pipeline.py` | `walmart_products` | Walmart Product/Affiliate API | `WALMART_API_KEY` |
-| `kroger_pipeline.py` | `kroger_products` | Kroger product API (groceries, household) | `KROGER_CLIENT_ID`/`SECRET` |
-| `numbeo_pipeline.py` | (TBD) | Cost-of-living price data | keyless |
-| `hospital_prices_pipeline.py` | `hospital_prices` | Hospital price transparency files | keyless |
-| `bestbuy_products_pipeline.py` | (TBD: `bestbuy_products`) | Best Buy electronics prices | `BESTBUY_API_KEY` |
+| `walmart_pipeline.py` | `walmart_products` | Walmart Product/Affiliate API — **no general free tier, rejected** | `WALMART_API_KEY` |
+| `numbeo_pipeline.py` | (TBD) | Cost-of-living price data — **paid API, rejected** | keyless |
+| `hospital_prices_pipeline.py` | `hospital_prices` | Hospital price transparency files (via aggregator) | keyless |
 
 ## Validation coverage
 

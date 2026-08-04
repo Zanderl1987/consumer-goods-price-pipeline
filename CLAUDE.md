@@ -73,6 +73,15 @@ enforce this):
 
 ## Gotchas
 
+- `year` and `month` are reserved column names — `write_partitioned` creates
+  a Hive `year=YYYY/month=MM/` partition, and `query.py` reads tables back
+  with `hive_partitioning=True`, so a domain column literally named `year`
+  or `month` gets silently overwritten by the partition value on read-back
+  (bit us in `cms_drug_pricing_pipeline.py` on 2026-08-04 — a real "spending year"
+  2020-2024 column read back as a constant 2026 for every row, which also
+  silently wrecked curated.py's dedup). Name domain year/month columns
+  something else (e.g. `spending_year`, `fiscal_year`).
+
 - `query.py`'s module docstring must not contain a literal `"""` — it
   terminates the docstring early (broke `query.py` on 2026-08-03; fixed by
   rewriting the SQL example with string concatenation).
