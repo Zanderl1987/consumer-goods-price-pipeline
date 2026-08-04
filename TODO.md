@@ -100,9 +100,32 @@ original backlog is now built.
       curated.py deduped on (commodity, date) this destroyed 99%+ of the
       data (35,210→42 rows) before the fix (now uses the real month via
       `begin_code`, natural key gained `description`).
-- [ ] `USDA_AMS_API_KEY` still needed — real account signup at
-      mymarketnews.ams.usda.gov (not an instant-key form like the others),
-      key lives under "My Profile" once logged in.
+- [x] ~~Register USDA_AMS_API_KEY~~ — user registered via eAuth 2026-08-04.
+      Live-verified: 2,749 retail rows + 41,288 wholesale rows in ~72s.
+      **This pipeline's first-ever live run timed out at 900s with zero
+      output** — turned out to be three stacked bugs in
+      `usda_ams_pipeline.py`: (1) wrong endpoint path (`{base}/{slug}` 404s;
+      `{base}/reports/{slug}` alone returns narrative text, not prices — the
+      per-commodity data needs `{base}/reports/{slug}/Report Details`
+      explicitly); (2) `FVWV`, the originally-assumed national terminal
+      report slug, doesn't exist at all — there's no single national
+      terminal report, only ~30 per-city fruit/veg report pairs (~half
+      "Discontinued", including Dallas and San Francisco — swapped for 6
+      active US cities); (3) the real cause of the 900s timeout — AMS's
+      `date_start`/`date_end` params are silently **ignored** on the
+      Report Details endpoint (confirmed live: a 2020 date window returned
+      2026 data), so every request was pulling ~100k largely-unfiltered
+      historical rows at 90-120s each. Switched to the `lastDays` param
+      (v3.1 only, found via `/services/help`), which filters correctly and
+      cut request time to ~5s. Also: `curated.py`'s natural key had to be
+      dropped entirely for these two tables — AMS terminal reports
+      legitimately publish multiple simultaneous vendor quotes that share
+      every field the API exposes but have different prices, so full-row
+      dedup (only removes exact re-fetched duplicates) is the correct,
+      non-data-losing behavior here.
+
+**All 21 keyed/keyless pipelines that can run without a business-domain
+email are now live.** Only Best Buy remains SKIPping (deferred, see below).
 
 ## Deferred
 

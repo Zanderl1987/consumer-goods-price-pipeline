@@ -259,11 +259,70 @@ to defer** — noted in the `project_consumer_goods_pipeline` memory file to
 resurface if credentials come up again, not added to this repo's TODO.md
 since it isn't a pipeline-source item.
 
+## Part 6 (same day): AMS activated — the deepest bug hunt of the session
+
+User registered a real USDA AMS Market News (MARS) key via eAuth and
+pasted it. Live-tested against the token endpoint first (200, real report
+list back) before touching the pipeline.
+
+First live run of `usda_ams_pipeline.py` (same "never had a key before"
+situation as CMS/EIA/NASS) **timed out at 900s with zero captured output**
+— the worst symptom yet, and the deepest investigation of the day:
+
+1. **Endpoint path was wrong.** `{base}/{slug}` 404s. `{base}/reports/{slug}`
+   alone returns the "Report Header" section by default — weekly narrative
+   text like "Sizzling Summer Deals... Hass avocados... 13%...", not a
+   single price. The per-commodity data lives in a separate "Report
+   Details" section that has to be requested explicitly via
+   `{base}/reports/{slug}/Report Details`.
+2. **`FVWV` doesn't exist.** The originally-assumed national terminal-market
+   slug isn't in the live report catalog at all (checked against the full
+   1,049-report listing). There's no single national terminal report —
+   only ~30 per-city fruit/vegetable report pairs, roughly half marked
+   "(Discontinued)" in their own titles, including Dallas and San
+   Francisco (both would have been reasonable-sounding but wrong guesses
+   if picked blind). Replaced with 6 confirmed-active US cities (Atlanta,
+   Boston, Chicago, LA, NYC, Miami).
+3. **The actual 900s-timeout cause**: `date_start`/`date_end` are silently
+   **ignored** by the Report Details endpoint, on both API versions (v1.2
+   and v3.1) — proven by requesting a 2020-01-01..2020-01-07 window and
+   getting 2026 dates back, with an identical `stats.totalRows` regardless
+   of what range was asked for. Every request was fetching ~100k largely-
+   unfiltered historical rows no matter the intended window, at 90-120s
+   per terminal-market report (12 slugs × ~100s ≈ 20 minutes, well past
+   the 900s budget). The actually-working parameter, found by reading
+   `{base}/help`'s own endpoint listing, is `lastDays` — v3.1 only,
+   filters correctly, cut request time to ~5s per report.
+4. `parse_reports()`'s field names were also guessed wrong throughout
+   ("price", "location"/"market"/"city", "date" — none exist in either
+   real report shape). Rewritten against the live shapes: retail uses
+   `wtd_avg_price`/`region`; terminal uses `low_price`+`high_price`
+   (averaged)/`market_location_name`.
+5. **Natural-key saga**: `commodity+location+date` collapsed real distinct
+   quotes (different package sizes — $17.50/carton vs $19.50/"carton 12
+   4-oz packages" for the same alfalfa sprouts, same market, same day).
+   Broadened to 8 columns (commodity/variety/grade/size/unit/organic/
+   location/date) — still collided real quotes: three "Anise" rows at the
+   same Atlanta market on the same day, **identical across every single
+   field the API exposes**, with three different prices ($33.50, $39,
+   $43.25 avg) and no distinguishing field anywhere in the response
+   (checked `origin` too — same for all three). Concluded this is a
+   genuine multi-vendor-quote structure in AMS's own data that no natural
+   key can resolve, and removed the configured key entirely for both
+   tables — `curated.py` falls back to full-row dedup (only removes exact
+   re-fetched duplicates), which is the only non-data-losing option here.
+
+Live-verified after all fixes: 2,749 retail rows + 41,288 wholesale rows
+in 72 seconds (vs. 900s timeout / zero rows before). Real numbers spot-
+checked: Hass avocados $2.99-$5.42/bag by region, lemon terminal quotes
+$38.50-$49.50/carton at Atlanta. Committed + pushed (`0f8620d`).
+
+**All 21 keyed/keyless pipelines that can run without a business-domain
+email are now live and pulling real data.** Only Best Buy remains
+SKIPping, deferred per the earlier fake-email decision.
+
 ## Open work (next session)
 
-- Register `USDA_AMS_API_KEY` (real account signup at
-  mymarketnews.ams.usda.gov, key under "My Profile") to activate the last
-  SKIPping Stage-1 pipeline.
 - Best Buy: revisit if/when a real non-free-provider domain email is
   available, or if Best Buy opens an individual-developer path.
 - eBay Browse API (needs a Buy-API license beyond the App ID) and hospital
@@ -274,6 +333,8 @@ since it isn't a pipeline-source item.
   gas-grade series, PPI Used Motor Vehicles) — pipeline handles them
   gracefully (skips, doesn't crash) but those specific series never write
   data. Worth a cleanup pass if those series matter.
-- Given the CMS/EIA/NASS pattern above, worth a skeptical look at
-  `usda_ams_pipeline.py` too once `USDA_AMS_API_KEY` exists — it's in the
-  same boat (never run against a real key).
+- USDA AMS backfill mode (`--backfill`, lastDays=3650) will still truncate
+  at the 100k-row cap for dense reports/date ranges — a real, unmitigated
+  API limitation (no offset/pagination param exists), not a bug. Fine for
+  routine incremental use; worth knowing about before relying on a full
+  historical AMS backfill.
