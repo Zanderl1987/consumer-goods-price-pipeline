@@ -59,9 +59,18 @@ KEYS: dict[str, list[str]] = {
     "bls_cpi":                ["series_id", "date"],
     "bls_avg_prices":         ["series_id", "date"],
     "bls_ppi":                ["series_id", "date"],
-    # USDA AMS market news — one quote per commodity/location/date
-    "usda_ams_wholesale":     ["commodity", "location", "date"],
-    "usda_ams_retail":        ["commodity", "unit", "date"],
+    # USDA AMS market news — deliberately NOT keyed (falls back to full-row
+    # dedup). Confirmed live 2026-08-04: terminal-market reports can carry
+    # multiple simultaneous real quotes (different shippers/vendors) that
+    # are identical across every field the API exposes -- commodity,
+    # variety, grade, size, unit, organic, origin, location, date -- yet
+    # have genuinely different prices (e.g. three "Anise" quotes at the
+    # same Atlanta market on the same day: $37.50, $33.50, $39/$43.25 avg,
+    # with no distinguishing field between them anywhere in the response).
+    # No natural key can separate real multi-vendor quotes from actual
+    # re-fetched duplicates here; full-row dedup only removes exact
+    # repeats, which is the correct, non-data-losing behavior for this
+    # source.
     # USDA NASS prices — one value per commodity/date
     # description distinguishes same-commodity/date series variants (e.g.
     # PRICE RECEIVED "$/BU" vs "PCT OF PARITY" vs "10 YEAR AVG") --

@@ -87,7 +87,7 @@ PIPELINES: list[PipelineSpec] = [
         tables=["usda_ams_wholesale", "usda_ams_retail"],
         requires_env=["USDA_AMS_API_KEY"],
         backfill_args=["--backfill"],
-        timeout=900,
+        timeout=600,
     ),
     PipelineSpec(
         name="usda_nass_prices",
