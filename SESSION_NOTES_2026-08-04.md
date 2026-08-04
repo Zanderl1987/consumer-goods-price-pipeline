@@ -100,9 +100,72 @@ Repo state: 72/72 tests pass, `run_all.py --dry-run` registers all 22
 pipelines cleanly, `curated.py --check` and `validate.py` both clean (0
 errors) across every new table. Committed + pushed (`f02b444`).
 
+## Part 3 (same day): activated Kroger, deferred Best Buy
+
+User registered a real Kroger developer app and pasted the Client ID/Secret
+in chat. Declined to have those typed into a web form myself or handle them
+any other way than writing straight to the local `.env` (created fresh —
+none existed before); confirmed gitignored before and after.
+
+- **Live-verified 2026-08-04**: 1,759 rows, 1,061 products, 4/5 tracked
+  ZIPs, real Kroger/Ralphs/King Soopers products and prices.
+- **Correction found live**: a self-serve Kroger app registers in the
+  **Certification** environment, which authenticates at
+  `https://api-ce.kroger.com` — the pipeline was written against
+  `api.kroger.com` (Production), which 401s "invalid credentials" for a
+  Certification app's creds. Added a `KROGER_ENV` env var (defaults to
+  certification) so a future Production app just needs one `.env` line
+  changed, not a code change.
+- **Second bug found**: `kroger_pipeline.py` was missing the `load_dotenv()`
+  call every other keyed pipeline in this repo has at import time — worked
+  fine via `run_all.py` (which loads env centrally) but silently got empty
+  credentials when run standalone. Fixed.
+- **Known gap, not fixed**: the Denver ZIP's nearest store (from the
+  Locations API) 404s on every Products API search. Not fatal — just one
+  fewer ZIP's worth of rows. Looks like Certification-environment store
+  data isn't fully seeded with product catalogs everywhere.
+- Committed + pushed (`6070b54`).
+
+Then tried Best Buy: developer.bestbuy.com's signup rejects free-provider
+and .edu email addresses. User asked about using a fake company email to
+get past that — declined, since that's misrepresenting identity to
+deliberately bypass a restriction Best Buy put there on purpose, not a
+security-testing or authorized-bypass context. Marked Best Buy **deferred**
+in TODO.md instead (code stays built and wired, activation is a one-line
+`.env` add whenever a qualifying email exists). Committed + pushed
+(`0ae9f5b`).
+
+Aside: spent a while trying to use Claude-in-Chrome browser automation to
+navigate the Kroger portal for the user, but the extension never
+successfully connected this session (confirmed via PowerShell that Chrome
+wasn't even running the first time; still didn't connect after Chrome was
+confirmed running and the extension confirmed installed/enabled). Ended up
+doing the whole thing via manual chat instructions instead. Don't assume
+"installed" means "connected" if this comes up again on this machine.
+
+## Repo state at end of session (all 3 parts)
+
+- 72/72 tests pass. `run_all.py --dry-run` registers all 22 pipelines
+  cleanly. `curated.py --check` / `validate.py` clean (0 errors) on every
+  live table.
+- **11 of 27 CATALOG tables have real live data** (verified via
+  `query.tables()`): kroger_products, openfoodfacts_prices,
+  cms_drug_pricing, eurostat_hicp, oecd_cpi, statcan_retail_prices,
+  wfp_food_prices, fao_food_prices, fao_meat_prices, worldbank_pinksheet,
+  imf_commodities.
+- No data yet (SKIPping or just never run): BLS (keyless-capable via v1
+  fallback, but nobody's run it this session), USDA_AMS, USDA_NASS, EIA,
+  FRED (all missing keys, pre-existing), Best Buy (deferred — see above),
+  walmart/ebay/hospital_prices (not built, reserved only).
+- Commits this session: `e08bb29` .. `0ae9f5b` (11 commits total across all
+  3 parts).
+
 ## Open work (next session)
 
-- Register `KROGER_CLIENT_ID`/`SECRET` and `BESTBUY_API_KEY` (both free) to
-  activate the two SKIPping pipelines.
+- Register `USDA_AMS_API_KEY`, `USDA_NASS_API_KEY`, `EIA_API_KEY`,
+  `FRED_API_KEY` (all free) to activate the remaining SKIPping Stage-1
+  government pipelines.
+- Best Buy: revisit if/when a real non-free-provider domain email is
+  available, or if Best Buy opens an individual-developer path.
 - eBay Browse API (needs a Buy-API license beyond the App ID) and hospital
   price transparency (needs an aggregator) remain unbuilt — see TODO.md.
