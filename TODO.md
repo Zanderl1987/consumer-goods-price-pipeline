@@ -64,16 +64,30 @@ original backlog is now built.
       Documented in CLAUDE.md gotchas.
 - [x] **Best Buy products pipeline** — `bestbuy_products`. Built 2026-08-04
       (keyword search across 15 terms, `format=json`). Fully wired. **SKIPs
-      cleanly at runtime** — no `BESTBUY_API_KEY` configured yet; register
-      free instant key at developer.bestbuy.com/apis to activate.
+      cleanly at runtime, DEFERRED** — Best Buy's developer signup rejects
+      free/.edu email addresses ("Sorry. Free email and .edu addresses are
+      not allowed at this time"), and this account doesn't have a
+      registerable business domain email. Code is ready; activate whenever
+      a qualifying email is available — see "Deferred" section below.
 
 ## Open (needs a free key registered + added to `.env`)
 
 - [x] ~~Register KROGER_CLIENT_ID/SECRET~~ — done 2026-08-04, live-verified.
-- [ ] Register `BESTBUY_API_KEY` at developer.bestbuy.com/apis, add to
-      `.env` to activate `bestbuy_products_pipeline.py`.
 - [ ] Same for the existing keyed Stage 1 pipelines still SKIPping:
       `USDA_AMS_API_KEY`, `USDA_NASS_API_KEY`, `EIA_API_KEY`, `FRED_API_KEY`.
+
+## Deferred
+
+- [ ] **Best Buy** (`bestbuy_products`, `BESTBUY_API_KEY`) — 2026-08-04:
+      developer.bestbuy.com's signup form rejects free-provider and .edu
+      email addresses ("Sorry. Free email and .edu addresses are not
+      allowed at this time"). Not worked around with a fake/misrepresented
+      email — that's misleading Best Buy's own eligibility check on
+      purpose, not something to do even for a low-stakes hobby key. Revisit
+      if/when a real non-free-provider domain email becomes available, or
+      if Best Buy opens an individual-developer path. Pipeline code is
+      already built and fully wired — activation is a one-line `.env` add
+      whenever a key exists.
 
 ## Not built (deprioritized / needs more than a free key)
 
