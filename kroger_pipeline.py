@@ -10,17 +10,29 @@ tracked ZIP, via the Locations API) and then re-runs a fixed product search
 term list against each store.
 
 Auth: OAuth2 client-credentials, HTTP Basic (base64 CLIENT_ID:CLIENT_SECRET)
-  Token : POST https://api.kroger.com/v1/connect/oauth2/token
-          body: grant_type=client_credentials&scope=product.compact
-  Products : GET https://api.kroger.com/v1/products
-          params: filter.term, filter.locationId, filter.limit (<=50)
-  Locations: GET https://api.kroger.com/v1/locations
-          params: filter.zipCode.near, filter.radiusInMiles, filter.limit
+  Token     : POST {BASE}/v1/connect/oauth2/token
+              body: grant_type=client_credentials&scope=product.compact
+  Products  : GET  {BASE}/v1/products
+              params: filter.term, filter.locationId, filter.limit (<=50)
+  Locations : GET  {BASE}/v1/locations
+              params: filter.zipCode.near, filter.radiusInMiles, filter.limit
 
-Verified live 2026-08-04 against developer docs (no live key available in
-this environment yet — token/product/location endpoint shapes are per the
-official docs; SKIPs cleanly via requires_env until KROGER_CLIENT_ID/SECRET
-are configured). Rate limits: ~10,000 product calls/day, ~1,600 location
+{BASE} depends on which environment the app was registered in on the Kroger
+developer portal — a self-serve app defaults to (and, per live testing
+2026-08-04, can ONLY authenticate against) the Certification environment,
+`https://api-ce.kroger.com`; `https://api.kroger.com` (Production) 401s with
+"invalid credentials" for a Certification app and is likely gated behind a
+Kroger partner-approval process this pipeline doesn't have. Set
+KROGER_ENV=production in .env to switch once/if a Production app exists.
+Verified live 2026-08-04 with a real Certification-environment token +
+product/location fetch: 1,759 rows, 1,061 products across 4/5 tracked ZIPs.
+The 5th (80202 Denver) 404s on every product search ("No location was found
+matching the given LocationId") despite the Locations API returning it as a
+real nearby store -- Certification-environment store data appears only
+partially seeded with product data, not every "nearby" locationId the
+Locations API hands back actually has a product catalog behind it. Not
+treated as an error: fetch_products() simply returns [] for that store and
+the run continues. Rate limits: ~10,000 product calls/day, ~1,600 location
 calls/day (per endpoint).
 
 Tracked ZIPs (one Kroger-banner store per region, hardcoded — the API has no
@@ -51,12 +63,17 @@ import time
 
 import pandas as pd
 import requests
+from dotenv import load_dotenv
 
 from storage_utils import write_partitioned
 
-TOKEN_URL = "https://api.kroger.com/v1/connect/oauth2/token"
-PRODUCTS_URL = "https://api.kroger.com/v1/products"
-LOCATIONS_URL = "https://api.kroger.com/v1/locations"
+load_dotenv()
+
+BASE_URL = ("https://api.kroger.com" if os.environ.get("KROGER_ENV") == "production"
+            else "https://api-ce.kroger.com")
+TOKEN_URL = f"{BASE_URL}/v1/connect/oauth2/token"
+PRODUCTS_URL = f"{BASE_URL}/v1/products"
+LOCATIONS_URL = f"{BASE_URL}/v1/locations"
 
 OUTPUT_DIR = os.path.join("storage", "raw", "kroger", "products")
 MAX_RETRIES = 3

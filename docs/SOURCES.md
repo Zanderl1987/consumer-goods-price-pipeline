@@ -48,7 +48,7 @@ earlier assumptions are flagged inline.
 |---|---|---|---|---|
 | **Best Buy Products API** | Free key, instant — https://developer.bestbuy.com/apis | 1M+ electronics products, current + historical, price + sale/clearance, availability by store/ZIP | Near-real-time | Base `api.bestbuy.com/v1/products`, apiKey query param, parenthesized filter syntax e.g. `(search=laptop)`, `format=json`, `page`/`pageSize` (max 100). **PIPELINE: bestbuy_products (built 2026-08-04, code verified against docs; SKIPs cleanly — no live key configured yet)** |
 | **eBay Buy Browse API** | Free App ID + **additional license** — https://developer.ebay.com/api-docs/buy/browse/ | Marketplace listings, keyword/category search, price filters, deals. Prices are point-in-time seller asks | On-demand | 5,000 calls/day. Needs OAuth2 user token + Buy-API license request on top of App ID. **PLANNED: ebay_listings** |
-| **Kroger Products API** | Free — https://developer.kroger.com/ | Grocery catalog; **price + aisle only returned with `filter.locationId`** (ZIP-localized). Locations API for store lookup | On-demand | ~10,000 product calls/day, ~1,600 location calls/day. OAuth2 client-credentials, token at `api.kroger.com/v1/connect/oauth2/token`. Community client: github.com/CupOfOwls/kroger-api. **PIPELINE: kroger_products (built 2026-08-04, code verified against docs; SKIPs cleanly — no live key configured yet)** |
+| **Kroger Products API** | Free — https://developer.kroger.com/ | Grocery catalog; **price + aisle only returned with `filter.locationId`** (ZIP-localized). Locations API for store lookup | On-demand | ~10,000 product calls/day, ~1,600 location calls/day. OAuth2 client-credentials. **Correction (verified live 2026-08-04): a self-serve app registers in the Certification environment, which authenticates at `api-ce.kroger.com`** — `api.kroger.com` (Production) 401s "invalid credentials" for a Certification app's client ID/secret; Production is likely gated behind Kroger partner approval. Certification store data is also only partially seeded — one of 5 tracked ZIPs' nearest store 404s on every product search despite the Locations API returning it as real. Community client: github.com/CupOfOwls/kroger-api. **PIPELINE: kroger_products (built + activated 2026-08-04, live data: 1,759 rows, 1,061 products, 4/5 ZIPs)** |
 | **Etsy Open API v3** | Free key — https://developer.etsy.com/ | Listing prices (maker/resale, skewed vs mainstream retail) | On-demand | "v3 Limited Access" for new apps. OAuth required. Low priority. |
 | **Walmart** | **No general free tier** — affiliate/Impact Radius approval gate | Item prices for affiliate-eligible items only | - | **REJECTED** for a hobby pipeline. |
 | **Amazon** | **Not viable** — Creators API (ex-PA-API 5.0, retired 2026-05-15) requires 10 qualifying sales in 30 days | Product offers | - | **REJECTED**. |
@@ -86,10 +86,10 @@ CMS drug pricing (Stage 1/3 "cheap to add" indices/wholesale sources).
 Kroger and Best Buy are also built and wired but SKIP at runtime until a
 free key is registered and added to `.env`.
 
-**Still open:** register `KROGER_CLIENT_ID`/`SECRET` (developer.kroger.com)
-and `BESTBUY_API_KEY` (developer.bestbuy.com/apis) to activate those two.
-eBay (needs a Buy-API license on top of the App ID) and a hospital-price
-aggregator (Turquoise Health / PriceTransparency.io) remain unbuilt.
+**Still open:** register `BESTBUY_API_KEY` (developer.bestbuy.com/apis) to
+activate `bestbuy_products`. Kroger is now live (2026-08-04). eBay (needs a
+Buy-API license on top of the App ID) and a hospital-price aggregator
+(Turquoise Health / PriceTransparency.io) remain unbuilt.
 
 **Never build:** Numbeo, KBB, JD Power, CarGurus/Carvana/TrueCar, GasBuddy,
 Walmart, Amazon, Target, HD, Lowe's, Costco, IKEA.

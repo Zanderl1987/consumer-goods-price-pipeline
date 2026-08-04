@@ -22,9 +22,18 @@ original backlog is now built.
       Facts contributors.
 - [x] **Kroger products pipeline** — `kroger_pipeline.py` built 2026-08-04
       (OAuth2 client-credentials, 5 tracked ZIPs, 20 search terms). Fully
-      wired into run_all.py/query.py/curated.py/validate.py/tests. **SKIPs
-      cleanly at runtime** — no `KROGER_CLIENT_ID`/`SECRET` configured yet;
-      register free at developer.kroger.com to activate.
+      wired into run_all.py/query.py/curated.py/validate.py/tests.
+      **Activated and live-verified 2026-08-04**: 1,759 rows, 1,061
+      products, 4/5 ZIPs (real Kroger/Ralphs/King Soopers product+price
+      data). **Correction found live:** a self-serve app registers in the
+      Certification environment, which authenticates against
+      `api-ce.kroger.com`, NOT `api.kroger.com` (Production 401s
+      "invalid credentials" for a Certification app's credentials — set
+      `KROGER_ENV=production` in `.env` if a Production-tier app is ever
+      approved). Also: Certification store data is only partially
+      seeded — the Denver ZIP's "nearby store" from the Locations API
+      404s on every product search; not fatal, just fewer rows for that
+      ZIP.
 - [x] **Eurostat HICP pipeline** — `eurostat_hicp` (renamed from the
       originally-reserved `eurostat_hpcp` typo). Built 2026-08-04,
       live-verified: 1,352 rows (incremental), 43 geos, all-items + food.
@@ -60,8 +69,7 @@ original backlog is now built.
 
 ## Open (needs a free key registered + added to `.env`)
 
-- [ ] Register `KROGER_CLIENT_ID`/`KROGER_CLIENT_SECRET` at
-      developer.kroger.com, add to `.env` to activate `kroger_pipeline.py`.
+- [x] ~~Register KROGER_CLIENT_ID/SECRET~~ — done 2026-08-04, live-verified.
 - [ ] Register `BESTBUY_API_KEY` at developer.bestbuy.com/apis, add to
       `.env` to activate `bestbuy_products_pipeline.py`.
 - [ ] Same for the existing keyed Stage 1 pipelines still SKIPping:

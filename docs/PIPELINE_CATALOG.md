@@ -31,7 +31,7 @@ free API key.
 | Pipeline | Table(s) | Covers | Key |
 |---|---|---|---|
 | `openfoodfacts_pipeline.py` | `openfoodfacts_prices` | Open Prices — real barcode/category price observations from receipts + price tags, via the Hugging Face Parquet snapshot (re-pointed 2026-08-04; the old version scraped the sparse main product DB) | keyless |
-| `kroger_pipeline.py` | `kroger_products` | Kroger grocery catalog prices, ZIP-localized to 5 tracked regions (price only returns with a store-scoped `filter.locationId`) | `KROGER_CLIENT_ID`/`SECRET` |
+| `kroger_pipeline.py` | `kroger_products` | Kroger grocery catalog prices, ZIP-localized to 5 tracked regions (price only returns with a store-scoped `filter.locationId`). Certification-environment app — authenticates at `api-ce.kroger.com`, not `api.kroger.com` | `KROGER_CLIENT_ID`/`SECRET` |
 | `bestbuy_products_pipeline.py` | `bestbuy_products` | Best Buy electronics/appliance prices incl. sale/clearance, ~15 tracked search terms | `BESTBUY_API_KEY` |
 
 ## Stage 3 — planned
