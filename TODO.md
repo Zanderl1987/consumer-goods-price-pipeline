@@ -73,8 +73,24 @@ original backlog is now built.
 ## Open (needs a free key registered + added to `.env`)
 
 - [x] ~~Register KROGER_CLIENT_ID/SECRET~~ — done 2026-08-04, live-verified.
-- [ ] Same for the existing keyed Stage 1 pipelines still SKIPping:
-      `USDA_AMS_API_KEY`, `USDA_NASS_API_KEY`, `EIA_API_KEY`, `FRED_API_KEY`.
+- [x] ~~Register EIA_API_KEY~~ — found in an existing local credentials doc
+      2026-08-04, live-verified: 468 gas-retail + 280 gas-spot + 310
+      electricity + 355 natgas rows. **This was the pipeline's first-ever
+      live run** (never had a key before) and it surfaced two real bugs in
+      `eia_energy_prices_pipeline.py` — the electricity route's `data[]`
+      param doesn't accept "value" (only revenue/sales/price/customers),
+      and the natgas route has no `stateid` column at all (facets are
+      duoarea/product/process/series). Both fixed; `validate.py`'s SCHEMAS
+      for both tables also corrected — they'd assumed a `value` column
+      neither table actually produces (`cents_per_kwh` / `price` instead).
+- [x] ~~Register FRED_API_KEY~~ — found in the same doc, live-verified:
+      1,280 + 118 rows. Worked first try, no code changes needed.
+- [ ] `USDA_AMS_API_KEY` / `USDA_NASS_API_KEY` still needed — a "USDA API
+      KEY" found in the same local credentials doc turned out to be for
+      **FoodData Central** (nutrition data), not NASS QuickStats or AMS
+      Market News; neither accepted it (both 401'd). Still need separate
+      registration for these two — see the earlier guidance (NASS is a
+      fast email-only form, AMS Market News is a real account signup).
 
 ## Deferred
 

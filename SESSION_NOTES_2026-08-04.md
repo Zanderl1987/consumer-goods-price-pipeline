@@ -160,12 +160,55 @@ doing the whole thing via manual chat instructions instead. Don't assume
 - Commits this session: `e08bb29` .. `0ae9f5b` (11 commits total across all
   3 parts).
 
+## Part 4 (same day): EIA + FRED activated from an existing credentials doc
+
+User asked to register USDA and EIA keys next. Declined to create accounts
+or fill in signup forms myself (that's a hard no regardless of how minor it
+seems), and instead asked the user to check whether they already had
+usable keys saved in `C:\Users\zande\Downloads\USERNAMES AND
+PASSWORDS.docx`. Extracted the doc's text locally via `python-docx`,
+grepped it for relevant keywords (usda/eia/nass/ams/kroger/bestbuy/fred)
+rather than reading and printing the whole 1855-line file into the
+conversation, and deleted the full extraction immediately after finding
+the relevant handful of entries.
+
+Found: an EIA key, a FRED key, a "USDA API KEY", and Best Buy portal login
+credentials (no actual API key — matches the earlier rejected-registration
+finding). Live-tested each key against its real endpoint before trusting
+it:
+
+- **EIA key: works.** Wired into `.env`, ran the pipeline live for the
+  first time ever (no key had existed before this session). That first
+  real run surfaced two genuine bugs that had been sitting untested in
+  `eia_energy_prices_pipeline.py`: the electricity route's `data[]` param
+  doesn't accept "value" (has to be revenue/sales/price/customers), and
+  the natgas route has no `stateid` column at all (real facets are
+  duoarea/product/process/series). Fixed both against the live API
+  response shape; also corrected `validate.py`'s SCHEMAS for both tables,
+  which had assumed a `value` column neither table actually produces.
+  Live-verified after the fix: 468+280+310+355 rows across all four EIA
+  sub-tables. Committed + pushed (`1de8aba`).
+- **FRED key: works,** first try, no code changes needed. 1,280 + 118 rows.
+- **"USDA API KEY": doesn't work for what we need.** Tested against both
+  NASS QuickStats and AMS Market News — both 401'd. Turned out to be a
+  **USDA FoodData Central** key (nutrition data, confirmed via a live call
+  to `api.nal.usda.gov/fdc/v1`), a completely different USDA API not
+  currently in this pipeline's registry. NASS/AMS still need their own
+  separate registration.
+
 ## Open work (next session)
 
-- Register `USDA_AMS_API_KEY`, `USDA_NASS_API_KEY`, `EIA_API_KEY`,
-  `FRED_API_KEY` (all free) to activate the remaining SKIPping Stage-1
-  government pipelines.
+- Register `USDA_AMS_API_KEY` (real account signup at
+  mymarketnews.ams.usda.gov) and `USDA_NASS_API_KEY` (fast email-only form
+  at quickstats.nass.usda.gov/api) to activate the last two SKIPping
+  Stage-1 pipelines.
 - Best Buy: revisit if/when a real non-free-provider domain email is
   available, or if Best Buy opens an individual-developer path.
 - eBay Browse API (needs a Buy-API license beyond the App ID) and hospital
   price transparency (needs an aggregator) remain unbuilt — see TODO.md.
+- Minor/pre-existing, not touched this session: `fred_consumer_prices_pipeline.py`
+  has several retired/renamed FRED series IDs that 400 (CPI Apparel, CPI
+  Food, CPI Medical Care, CPI Motor Vehicle Parts & Equipment, a couple of
+  gas-grade series, PPI Used Motor Vehicles) — pipeline handles them
+  gracefully (skips, doesn't crash) but those specific series never write
+  data. Worth a cleanup pass if those series matter.
