@@ -63,8 +63,12 @@ KEYS: dict[str, list[str]] = {
     "usda_ams_wholesale":     ["commodity", "location", "date"],
     "usda_ams_retail":        ["commodity", "unit", "date"],
     # USDA NASS prices — one value per commodity/date
-    "usda_prices_received":   ["commodity", "date"],
-    "usda_prices_paid":       ["commodity", "date"],
+    # description distinguishes same-commodity/date series variants (e.g.
+    # PRICE RECEIVED "$/BU" vs "PCT OF PARITY" vs "10 YEAR AVG") --
+    # commodity+date alone silently collapsed them together (found live
+    # 2026-08-04, a 99%+ row-count collapse on this pipeline's first run).
+    "usda_prices_received":   ["commodity", "description", "date"],
+    "usda_prices_paid":       ["commodity", "description", "date"],
     # EIA energy — one price per area/product/date
     "eia_gas_retail":         ["duoarea", "product", "date"],
     "eia_gas_spot":           ["series", "date"],

@@ -40,11 +40,24 @@ BACKOFF_SECONDS = 30
 BACKFILL_START_YEAR = 2000
 INCREMENTAL_YEARS = 5
 
-# Prices received (farm-gate) — livestock, crops, and products consumers buy
+# Prices received (farm-gate) — livestock, crops, and products consumers buy.
+# Filtered live to statisticcat_desc="PRICE RECEIVED" (see fetch_commodities).
+# NOT sector/group-filtered: this list spans livestock (ANIMALS & PRODUCTS/
+# LIVESTOCK, DAIRY, POULTRY groups), field crops (CROPS/FIELD CROPS), and
+# fruit/veg (CROPS/FRUIT & TREE NUTS, VEGETABLES) -- a single sector_desc+
+# group_desc filter can only ever match one of those groups, so it silently
+# 400s -- "bad request - invalid query" -- for every commodity outside
+# whichever group was picked (found live 2026-08-04, first real run of this
+# pipeline since a key was configured: every fruit/veg/dairy/poultry item
+# failed both LIVESTOCK and FIELD CROPS filters). commodity_desc alone is
+# specific enough; NASS resolves sector/group from it internally.
 PRICES_RECEIVED = [
     "CATTLE",
     "HOGS",
-    "BROILERS",
+    # "BROILERS" is a class_desc under commodity_desc="CHICKENS", not its
+    # own commodity -- CHICKENS below already returns broiler-class rows
+    # (found live 2026-08-04: "BROILERS" 400s, CHICKENS's own results
+    # include class_desc="BROILERS" entries).
     "CHICKENS",
     "TURKEYS",
     "MILK",
@@ -64,15 +77,30 @@ PRICES_RECEIVED = [
     "ORANGES",
 ]
 
-# Prices paid (input costs) that eventually show up in consumer goods
+# Prices paid (input costs) that eventually show up in consumer goods.
+# Filtered live to statisticcat_desc="INDEX FOR PRICE PAID, 2011" (the
+# modern-base index; NASS also publishes a legacy 1910-1914=100 base for
+# the same commodities, and a "RELATIVE WEIGHT" series that isn't a price
+# at all -- both excluded by the statisticcat filter). These are all
+# INDEX values (unit_desc="INDEX"), not absolute dollars -- "FEED"/
+# "FERTILIZER TOTALS"/etc. are aggregate baskets, not single priced goods,
+# same as this repo's other CPI-style index tables.
+# Two of the originally-listed commodity_desc values ("ANIMAL DRUGS",
+# "BABY CHICKS") don't exist anywhere in NASS's PRICES PAID taxonomy --
+# also found live 2026-08-04 (400 on every request, even with the correct
+# statisticcat) -- swapped for real commodity_desc values covering similar
+# ground (POULTRY TOTALS, ANIMAL SECTOR).
 PRICES_PAID = [
     "FEED",
-    "FERTILIZER",
+    "FERTILIZER TOTALS",
     "FUELS",
-    "SEEDS",
-    "ANIMAL DRUGS",
-    "BABY CHICKS",
+    "SEEDS & PLANTS TOTALS",
+    "POULTRY TOTALS",
+    "ANIMAL SECTOR",
 ]
+
+PRICES_RECEIVED_STATISTICCAT = "PRICE RECEIVED"
+PRICES_PAID_STATISTICCAT = "INDEX FOR PRICE PAID, 2011"
 
 
 def _get_with_backoff(params: dict) -> dict | None:
@@ -112,16 +140,15 @@ def _get_with_backoff(params: dict) -> dict | None:
     return None
 
 
-def fetch_commodities(commodities: list[str], sector: str, group: str,
+def fetch_commodities(commodities: list[str], statisticcat: str,
                       start_year: int, end_year: int) -> pd.DataFrame:
-    """Fetch price statistics for a list of commodities."""
+    """Fetch one statisticcat_desc's price statistics for a list of commodities."""
     frames = []
     for comm in commodities:
         params = {
             "source_desc": "SURVEY",
-            "sector_desc": sector,
-            "group_desc":  group,
             "commodity_desc": comm,
+            "statisticcat_desc": statisticcat,
             "agg_level_desc": "NATIONAL",
             "year__GE": str(start_year),
             "year__LE": str(end_year),
@@ -161,9 +188,18 @@ def clean(df: pd.DataFrame, sector_tag: str) -> pd.DataFrame:
             errors="coerce",
         )
     if "year" in df.columns:
-        df["year"] = pd.to_numeric(df["year"], errors="coerce").astype("Int64")
+        # begin_code is the reference month ("01".."12") for MONTHLY series,
+        # "00" for ANNUAL series -- collapsing straight to year-01-01 for
+        # every row (the original approach) silently merged up to 12
+        # distinct monthly observations per commodity/year into one row
+        # once curated.py deduped on (commodity, date) -- found live
+        # 2026-08-04 as a 99%+ row-count collapse on this pipeline's
+        # first-ever real run.
+        month = pd.to_numeric(df.get("begin_code"), errors="coerce").fillna(1).clip(lower=1, upper=12).astype(int)
+        year = pd.to_numeric(df["year"], errors="coerce")
         df["date"] = pd.to_datetime(
-            df["year"].dropna().astype(int).astype(str) + "-01-01", errors="coerce",
+            year.astype("Int64").astype(str) + "-" + month.astype(str).str.zfill(2) + "-01",
+            errors="coerce",
         )
     # "year" dropped: Hive partitioning treats it as a reserved virtual column
     keep = ["commodity", "stat_category", "description", "unit", "date", "agg_level", "value"]
@@ -196,9 +232,7 @@ def main():
     print(f"Mode: {'BACKFILL' if args.backfill else 'INCREMENTAL'} ({start_year}-{now.year})")
 
     print(f"\n--- Prices Received ({', '.join(PRICES_RECEIVED[:5])}...) ---")
-    df = fetch_commodities(PRICES_RECEIVED, "ANIMALS & PRODUCTS", "LIVESTOCK", start_year, now.year)
-    df = pd.concat([df, fetch_commodities(PRICES_RECEIVED, "CROPS", "FIELD CROPS", start_year, now.year)],
-                   ignore_index=True) if not df.empty else df
+    df = fetch_commodities(PRICES_RECEIVED, PRICES_RECEIVED_STATISTICCAT, start_year, now.year)
     clean_recv = clean(df, "prices_received")
     if not clean_recv.empty:
         path = write_partitioned(clean_recv, os.path.join(OUTPUT_DIR, "prices_received"),
@@ -206,7 +240,7 @@ def main():
         print(f"\n[+] {path}  ({len(clean_recv):,} rows)")
 
     print(f"\n--- Prices Paid ({', '.join(PRICES_PAID)}) ---")
-    df_paid = fetch_commodities(PRICES_PAID, "ECONOMICS", "PRICES PAID", start_year, now.year)
+    df_paid = fetch_commodities(PRICES_PAID, PRICES_PAID_STATISTICCAT, start_year, now.year)
     clean_paid = clean(df_paid, "prices_paid")
     if not clean_paid.empty:
         path = write_partitioned(clean_paid, os.path.join(OUTPUT_DIR, "prices_paid"),
