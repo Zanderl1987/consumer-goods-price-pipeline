@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Unified Pipeline Runner — runs all consumer-goods price pipelines in
+Unified Pipeline Runner - runs all consumer-goods price pipelines in
 dependency order.
 
 Stages
 ------
-  Stage 1  — Free/public sources (BLS, USDA, EIA, international stats)
-  Stage 2  — Retail / e-commerce APIs (Kroger, Walmart, eBay, Open Food Facts)
-  Stage 3  — Derived (baskets, blended indexes built from Stage 1/2 output)
+  Stage 1  - Free/public sources (BLS, USDA, EIA, international stats)
+  Stage 2  - Retail / e-commerce APIs (Kroger, Walmart, eBay, Open Food Facts)
+  Stage 3  - Derived (baskets, blended indexes built from Stage 1/2 output)
 
 Usage
 -----
@@ -60,7 +60,7 @@ class PipelineSpec:
 
 
 PIPELINES: list[PipelineSpec] = [
-    # ── Stage 1 — Free / public government sources ───────────────────────────
+    # ── Stage 1 - Free / public government sources ───────────────────────────
     PipelineSpec(
         name="bls_cpi",
         file="bls_cpi_pipeline.py",
@@ -73,7 +73,7 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="bls_avg_prices",
         file="bls_avg_prices_pipeline.py",
-        desc="BLS average retail prices — grocery staples, energy, ~80 items",
+        desc="BLS average retail prices - grocery staples, energy, ~80 items",
         stage=1,
         tables=["bls_avg_prices"],
         backfill_args=["--backfill"],
@@ -82,7 +82,7 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="usda_ams",
         file="usda_ams_pipeline.py",
-        desc="USDA AMS market news — wholesale terminal + retail fruit/veg (incl. avocados)",
+        desc="USDA AMS market news - wholesale terminal + retail fruit/veg (incl. avocados)",
         stage=1,
         tables=["usda_ams_wholesale", "usda_ams_retail"],
         requires_env=["USDA_AMS_API_KEY"],
@@ -102,7 +102,7 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="eia_energy",
         file="eia_energy_prices_pipeline.py",
-        desc="EIA retail energy — gasoline/diesel, electricity, natural gas",
+        desc="EIA retail energy - gasoline/diesel, electricity, natural gas",
         stage=1,
         tables=["eia_gas_retail", "eia_gas_spot", "eia_electricity_price", "eia_natgas_price"],
         requires_env=["EIA_API_KEY"],
@@ -112,18 +112,18 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="fred_consumer",
         file="fred_consumer_prices_pipeline.py",
-        desc="FRED consumer price series — used cars, tires, housing, retail",
+        desc="FRED consumer price series - used cars, tires, housing, retail",
         stage=1,
         tables=["fred_consumer_prices", "fred_used_cars"],
         requires_env=["FRED_API_KEY"],
         backfill_args=["--backfill"],
         timeout=600,
     ),
-    # ── Stage 1 — Additional CPI / Inflation Sources ───────────────────────
+    # ── Stage 1 - Additional CPI / Inflation Sources ───────────────────────
     PipelineSpec(
         name="fred_cpi",
         file="fred_cpi_pipeline.py",
-        desc="FRED CPI series — broader consumer price index data",
+        desc="FRED CPI series - broader consumer price index data",
         stage=1,
         tables=["fred_cpi"],
         requires_env=["FRED_API_KEY"],
@@ -133,18 +133,18 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="apininja_inflation",
         file="apininja_inflation_pipeline.py",
-        desc="API‑Ninjas inflation rate data (global)",
+        desc="API-Ninjas inflation rate data (global)",
         stage=1,
         tables=["apininja_inflation"],
         requires_env=["APININJA_API_KEY"],
         backfill_args=["--backfill"],
         timeout=600,
     ),
-    # ── Stage 2 — Retail / e-commerce (free registration) ───────────────────
+    # ── Stage 2 - Retail / e-commerce (free registration) ───────────────────
     PipelineSpec(
         name="openfoodfacts",
         file="openfoodfacts_pipeline.py",
-        desc="Open Prices — real barcode/category-level price observations, receipts + price tags (keyless)",
+        desc="Open Prices - real barcode/category-level price observations, receipts + price tags (keyless)",
         stage=2,
         tables=["openfoodfacts_prices"],
         backfill_args=["--backfill"],
@@ -153,7 +153,7 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="statcan_retail_prices",
         file="statcan_retail_prices_pipeline.py",
-        desc="Statistics Canada retail prices — absolute CAD prices, milk to household goods (keyless)",
+        desc="Statistics Canada retail prices - absolute CAD prices, milk to household goods (keyless)",
         stage=1,
         tables=["statcan_retail_prices"],
         backfill_args=["--backfill"],
@@ -162,7 +162,7 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="wfp_food_prices",
         file="wfp_food_prices_pipeline.py",
-        desc="WFP global food prices — 98 countries, per-market retail/wholesale (keyless)",
+        desc="WFP global food prices - 98 countries, per-market retail/wholesale (keyless)",
         stage=1,
         tables=["wfp_food_prices"],
         backfill_args=["--backfill"],
@@ -181,7 +181,7 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="eurostat_hicp",
         file="eurostat_hicp_pipeline.py",
-        desc="Eurostat Harmonised Index of Consumer Prices — EU/EFTA, indices only (keyless)",
+        desc="Eurostat Harmonised Index of Consumer Prices - EU/EFTA, indices only (keyless)",
         stage=1,
         tables=["eurostat_hicp"],
         backfill_args=["--backfill"],
@@ -208,7 +208,7 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="worldbank_pinksheet",
         file="worldbank_pinksheet_pipeline.py",
-        desc="World Bank Pink Sheet — ~70 global commodity benchmark prices (keyless)",
+        desc="World Bank Pink Sheet - ~70 global commodity benchmark prices (keyless)",
         stage=1,
         tables=["worldbank_pinksheet"],
         backfill_args=["--backfill"],
@@ -236,18 +236,18 @@ PIPELINES: list[PipelineSpec] = [
     PipelineSpec(
         name="cms_drug_pricing",
         file="cms_drug_pricing_pipeline.py",
-        desc="CMS Medicare Part D spending by drug — program cost, not retail (keyless)",
+        desc="CMS Medicare Part D spending by drug - program cost, not retail (keyless)",
         stage=1,
         tables=["cms_drug_pricing"],
         backfill_args=["--backfill"],
         timeout=300,
     ),
-    # ── Stage 3 — Derived ────────────────────────────────────────────────────
+    # ── Stage 3 - Derived ────────────────────────────────────────────────────
     # Reserved for basket/aggregate builders as data accumulates.
     #
-    # PLANNED (add once endpoints are confirmed — see docs/SOURCES.md):
-    #   ebay (Browse API), walmart (Product API, no free tier — rejected),
-    #   amazon (rejected), numbeo (paid — rejected), hospital_prices.
+    # PLANNED (add once endpoints are confirmed - see docs/SOURCES.md):
+    #   ebay (Browse API), walmart (Product API, no free tier - rejected),
+    #   amazon (rejected), numbeo (paid - rejected), hospital_prices.
 ]
 
 
@@ -401,7 +401,7 @@ def compact_curated(passed_specs: list[PipelineSpec]) -> None:
     layer would glob those alongside every prior file and double-count rows.
     Compacting here keeps storage/curated/ (which query.py reads by default)
     in sync with the raw layer after every run. Only tables whose pipeline
-    PASSed are touched — no point re-reading unchanged tables.
+    PASSed are touched - no point re-reading unchanged tables.
     """
     tables = sorted({t for spec in passed_specs for t in spec.tables})
     if not tables:
@@ -410,7 +410,7 @@ def compact_curated(passed_specs: list[PipelineSpec]) -> None:
     print(f"\n-- Curated Compaction ({len(tables)} table(s)) --")
     try:
         df = curated.compact_all(tables=tables, verbose=True)
-    except Exception as exc:  # noqa: BLE001 — never let compaction sink a run
+    except Exception as exc:  # noqa: BLE001 - never let compaction sink a run
         print(f"  ! compaction error: {exc}")
         return
     if df is not None and not df.empty:
