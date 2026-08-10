@@ -32,6 +32,7 @@ source considered (coverage, key requirements, update cadence).
 - **Natural-key dedup** (`curated.py`) so re-fetches converge instead of
   stacking duplicate rows.
 - **Schema/null/range validation** (`validate.py`) wired into every run.
+- **Fallback sample data**: Pipelines such as Eurostat HICP, OpenFoodFacts, FRED CPI, and APINinjas Inflation are designed to fall back to using static sample data if the network is unavailable, an API limit is hit, or an API key is missing. This ensures the pipeline executes successfully and produces valid parquet files for downstream processes.
 
 ## Setup
 

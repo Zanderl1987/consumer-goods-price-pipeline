@@ -27,10 +27,11 @@ Run directly to see a full summary:
     python query.py
 """
 
-import glob as _glob_mod
 import os
+from typing import Optional
 import duckdb
 import pandas as pd
+import glob as _glob_mod
 
 _STORAGE_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "storage", "raw")
 _CURATED_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "storage", "curated")
@@ -90,6 +91,9 @@ CATALOG: dict[str, str] = {
     # ── US macro retail / consumer series (FRED) ────────────────────────────
     "fred_consumer_prices":     _glob("fred/consumer_prices/**/*.parquet"),
     "fred_used_cars":           _glob("fred/used_cars/**/*.parquet"),
+    "fred_cpi":                 _glob("fred/cpi/**/*.parquet"),
+    "apininja_inflation":       _glob("apininja/inflation/**/*.parquet"),
+    
 }
 
 
@@ -103,7 +107,7 @@ ANALYTICS_VIEWS: dict[str, str] = {
 }
 
 
-_CON: duckdb.DuckDBPyConnection | None = None
+_CON: Optional[duckdb.DuckDBPyConnection] = None
 
 
 def _con() -> duckdb.DuckDBPyConnection:

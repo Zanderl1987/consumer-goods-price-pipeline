@@ -37,6 +37,8 @@ EXPECTED_TABLES = [
     "imf_commodities",
     "fred_consumer_prices",
     "fred_used_cars",
+    "fred_cpi",
+    "apininja_inflation",
 ]
 
 

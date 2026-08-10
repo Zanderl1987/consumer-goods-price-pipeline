@@ -119,6 +119,27 @@ PIPELINES: list[PipelineSpec] = [
         backfill_args=["--backfill"],
         timeout=600,
     ),
+    # ── Stage 1 — Additional CPI / Inflation Sources ───────────────────────
+    PipelineSpec(
+        name="fred_cpi",
+        file="fred_cpi_pipeline.py",
+        desc="FRED CPI series — broader consumer price index data",
+        stage=1,
+        tables=["fred_cpi"],
+        requires_env=["FRED_API_KEY"],
+        backfill_args=["--backfill"],
+        timeout=600,
+    ),
+    PipelineSpec(
+        name="apininja_inflation",
+        file="apininja_inflation_pipeline.py",
+        desc="API‑Ninjas inflation rate data (global)",
+        stage=1,
+        tables=["apininja_inflation"],
+        requires_env=["APININJA_API_KEY"],
+        backfill_args=["--backfill"],
+        timeout=600,
+    ),
     # ── Stage 2 — Retail / e-commerce (free registration) ───────────────────
     PipelineSpec(
         name="openfoodfacts",

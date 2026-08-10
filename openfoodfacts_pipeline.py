@@ -103,7 +103,7 @@ def search_category(category: str) -> list[dict]:
 
 def fetch_recent_prices() -> list[dict]:
     """Try the Open Food Facts prices sub-API for recent price observations."""
-    r = get_with_backoff(PRICES_API + "?limit=100",
+    r = get_with_backoff(PRICES_API + "?limit=1000",
                          headers={"User-Agent": "consumer-goods-price-pipeline/0.1 (research)"})
     if not r:
         return []

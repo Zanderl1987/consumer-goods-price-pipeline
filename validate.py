@@ -233,6 +233,16 @@ SCHEMAS: dict[str, dict] = {
         "critical_nn": ["series_id", "date", "value"],
         "date_col":    "date",
     },
+    "fred_cpi": {
+        "required":    ["date", "value", "series"],
+        "critical_nn": ["date", "value", "series"],
+        "date_col":    "date",
+    },
+    "apininja_inflation": {
+        "required":    ["country", "year", "inflation"],
+        "critical_nn": ["country", "year", "inflation"],
+        "date_col":    "year",
+    },
 }
 
 
