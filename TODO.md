@@ -1,8 +1,34 @@
-# TODO — 2026-08-04
+# TODO — 2026-08-10
 
 Source research for consumer-goods price data is complete (see
 `docs/SOURCES.md`, verified 2026-08-03/04). Every keyless source from the
 original backlog is now built.
+
+## 2026-08-10 — reconcile + refresh (see SESSION_NOTES_2026-08-10.md)
+
+- [x] **Reconciled with origin** — committed 16-file local CPI work
+      (`04e0432`), pulled 15 commits, resolved 3 conflicts in origin's favor
+      (eurostat_hicp / openfoodfacts / statcan_retail), rewrote
+      `tests/test_eurostat_hicp.py` (`f876ada`), merge `1c8b122`.
+- [x] **Fixed `run_all.py` cp1252 crash** on U+2011/em-dash chars in APINinjas
+      descs — ASCII-normalized console output across 25 sites (`7815e8a`).
+- [x] **Refreshed stale-format OpenFoodFacts prices** — cleared old raw
+      partition set (barcode/product_name/retailer/price/currency/date), re-ran:
+      287,563 rows new format, curated + validate PASS (1 warning).
+- [x] **78/78 tests pass; 19 pipelines registered** in merged `run_all.py`.
+- [x] Pushed all 5 commits to origin/master (`8000856`).
+
+## Open (needs user action)
+
+- [ ] **Re-add the 8/4 keys to `.env`** — `.env` currently holds only
+      `FRED_API_KEY` + `APININJA_API_KEY`. USDA_AMS, USDA_NASS, EIA and KROGER
+      keys (documented as activated 2026-08-04) are NOT in this clone's `.env`,
+      so `usda_ams`, `usda_nass_prices`, `eia_energy`, `kroger`, and `bestbuy`
+      SKIP at runtime. Pipeline code is identical post-merge — one `.env` line
+      each unblocks them (no code change needed). Keys presumably live in
+      whichever clone/working tree did the 8/4 activation.
+
+## Done (2026-08-04 + earlier — all verified live)
 
 ## Done
 
