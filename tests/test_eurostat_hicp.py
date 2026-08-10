@@ -19,11 +19,11 @@ def test_parse_jsonstat_flattens_cube():
     df = parse_jsonstat(payload)
     assert len(df) == 4
     assert set(df["geo"]) == {"DE", "FR"}
-    assert set(df["time"]) == {"2023M01", "2023M02"}
+    assert set(df["date"]) == {"2023M01", "2023M02"}
     assert set(df["coicop"]) == {"CP00"}
     assert df["value"].tolist() == [102.5, 103.0, 100.5, 101.0]
 
 
 def test_parse_jsonstat_handles_empty():
     assert parse_jsonstat({}).empty
-    assert parse_jsonstat({"value": {}}).empty
+    assert parse_jsonstat({"value": {}, "id": [], "size": []}).empty
