@@ -74,6 +74,7 @@ CATALOG: dict[str, str] = {
     "eia_natgas_price":         _glob("eia/natgas_price/**/*.parquet"),
     # ── Retail grocery / e-commerce APIs ────────────────────────────────────
     "kroger_products":          _glob("kroger/products/**/*.parquet"),
+    "bestbuy_products":         _glob("bestbuy/products/**/*.parquet"),
     "walmart_products":         _glob("walmart/products/**/*.parquet"),
     "ebay_listings":            _glob("ebay/listings/**/*.parquet"),
     "openfoodfacts_prices":     _glob("openfoodfacts/prices/**/*.parquet"),
@@ -81,9 +82,10 @@ CATALOG: dict[str, str] = {
     "cms_drug_pricing":         _glob("cms/drug_pricing/**/*.parquet"),
     "hospital_prices":          _glob("cms/hospital_prices/**/*.parquet"),
     # ── International consumer prices ───────────────────────────────────────
-    "eurostat_hpcp":            _glob("eurostat/hpcp/**/*.parquet"),
+    "eurostat_hicp":            _glob("eurostat/hicp/**/*.parquet"),
     "oecd_cpi":                 _glob("oecd/cpi/**/*.parquet"),
     "statcan_retail_prices":    _glob("statcan/retail_prices/**/*.parquet"),
+    "wfp_food_prices":          _glob("wfp/food_prices/**/*.parquet"),
     "fao_food_prices":          _glob("fao/food_prices/**/*.parquet"),
     "fao_meat_prices":          _glob("fao/meat_prices/**/*.parquet"),
     "worldbank_pinksheet":      _glob("worldbank/pinksheet/**/*.parquet"),

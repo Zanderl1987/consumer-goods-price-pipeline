@@ -59,12 +59,25 @@ KEYS: dict[str, list[str]] = {
     "bls_cpi":                ["series_id", "date"],
     "bls_avg_prices":         ["series_id", "date"],
     "bls_ppi":                ["series_id", "date"],
-    # USDA AMS market news — one quote per commodity/location/date
-    "usda_ams_wholesale":     ["commodity", "location", "date"],
-    "usda_ams_retail":        ["commodity", "unit", "date"],
+    # USDA AMS market news — deliberately NOT keyed (falls back to full-row
+    # dedup). Confirmed live 2026-08-04: terminal-market reports can carry
+    # multiple simultaneous real quotes (different shippers/vendors) that
+    # are identical across every field the API exposes -- commodity,
+    # variety, grade, size, unit, organic, origin, location, date -- yet
+    # have genuinely different prices (e.g. three "Anise" quotes at the
+    # same Atlanta market on the same day: $37.50, $33.50, $39/$43.25 avg,
+    # with no distinguishing field between them anywhere in the response).
+    # No natural key can separate real multi-vendor quotes from actual
+    # re-fetched duplicates here; full-row dedup only removes exact
+    # repeats, which is the correct, non-data-losing behavior for this
+    # source.
     # USDA NASS prices — one value per commodity/date
-    "usda_prices_received":   ["commodity", "date"],
-    "usda_prices_paid":       ["commodity", "date"],
+    # description distinguishes same-commodity/date series variants (e.g.
+    # PRICE RECEIVED "$/BU" vs "PCT OF PARITY" vs "10 YEAR AVG") --
+    # commodity+date alone silently collapsed them together (found live
+    # 2026-08-04, a 99%+ row-count collapse on this pipeline's first run).
+    "usda_prices_received":   ["commodity", "description", "date"],
+    "usda_prices_paid":       ["commodity", "description", "date"],
     # EIA energy — one price per area/product/date
     "eia_gas_retail":         ["duoarea", "product", "date"],
     "eia_gas_spot":           ["series", "date"],
@@ -72,18 +85,24 @@ KEYS: dict[str, list[str]] = {
     "eia_natgas_price":       ["series_id", "date"],
     # Retail / e-commerce — one price observation per product per snapshot
     "kroger_products":        ["upc", "store_id", "fetched_at"],
+    "bestbuy_products":       ["sku", "fetched_at"],
     "walmart_products":       ["product_id", "fetched_at"],
     "ebay_listings":          ["item_id", "fetched_at"],
-    "openfoodfacts_prices":   ["code", "fetched_at"],
-    # Healthcare
-    "cms_drug_pricing":       ["ndc", "year", "labeler_name", "drug_name"],
+    "openfoodfacts_prices":   ["id"],
+    # Healthcare — CMS Part D Spending by Drug has no NDC column (it's
+    # aggregated to brand/generic/manufacturer); corrected from the
+    # originally-reserved NDC-based key after live verification 2026-08-04.
+    "cms_drug_pricing":       ["brand_name", "generic_name", "manufacturer", "spending_year"],
     "hospital_prices":        ["hospital_name", "cms_certification_number", "item_name", "payer"],
     # International — one value per series/date
-    "eurostat_hpcp":          ["series_id", "date"],
+    "eurostat_hicp":          ["series_id", "date"],
     "oecd_cpi":               ["series_id", "date"],
     "statcan_retail_prices":  ["item", "city", "date"],
-    "fao_food_prices":        ["item", "date"],
-    "fao_meat_prices":        ["item", "date"],
+    "wfp_food_prices":        ["market_id", "commodity_id", "date", "pricetype"],
+    # FAO CP/PP domains are per-country (area); corrected from the
+    # originally-reserved item-only key after live verification 2026-08-04.
+    "fao_food_prices":        ["area", "item", "date"],
+    "fao_meat_prices":        ["area", "item", "date"],
     "worldbank_pinksheet":    ["series_id", "date"],
     "imf_commodities":        ["series_id", "date"],
     # FRED — one value per series per date

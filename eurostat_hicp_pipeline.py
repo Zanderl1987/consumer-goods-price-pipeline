@@ -1,124 +1,172 @@
-# Eurostat HICP Pipeline (real implementation)
-"""Pipeline to ingest Eurostat HICP (Harmonised Index of Consumer Prices) data into DuckDB.
+#!/usr/bin/env python3
+"""
+Eurostat HICP Pipeline — Harmonised Index of Consumer Prices, EU/EFTA.
 
-The pipeline fetches the latest monthly HICP series for a selection of EU
-countries via the Eurostat JSON API, transforms the payload into a tidy table,
-and stores the result in a DuckDB database.
+Keyless JSON-stat 2.0 API. Verified live 2026-08-04:
+  GET https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_midx
+      ?format=JSON&lang=EN&coicop={CP00|CP01}&unit=I15
 
-The resulting table `hicp` has the columns:
+Indices only (no absolute euro prices — PRC_AVG, the old absolute-price
+dataset, was retired; verified 404 on 2026-08-03, see docs/SOURCES.md).
+unit=I15 is "Index, 2015=100", the current standard base. One request per
+COICOP group returns all ~45 geos (EU aggregates, all member states, EFTA,
+a few accession/candidate countries, UK, US) x full monthly history
+(1996-present) as a single JSON-stat cube — small enough (~16k cells) to
+fetch whole and reshape locally rather than paginating per country.
 
-* ``date`` – month (YYYY‑MM‑01)
-* ``country`` – ISO‑2 country code (e.g. ``DE``)
-* ``value`` – HICP index value (float)
-* ``unit`` – usually ``index``
+COICOP groups fetched: CP00 (all-items headline HICP) and CP01 (food and
+non-alcoholic beverages) — the two most relevant to a consumer-goods price
+tracker.
+
+Response shape: JSON-stat 2.0 "flat value dict" — `dimension.*.category.index`
+maps each dimension's category codes to a position, and `value` is keyed by
+the row-major flattened index across dimensions in `id` order
+([freq, unit, coicop, geo, time]). See parse_jsonstat() below.
+
+CLI:
+  python eurostat_hicp_pipeline.py             # incremental (last 24 months)
+  python eurostat_hicp_pipeline.py --backfill  # full history 1996->present
+
+Outputs:
+  storage/raw/eurostat/hicp/eurostat_hicp_{mode}_{YYYYMMDD}.parquet
+  (CATALOG: eurostat_hicp)
 """
 
-import json
-import urllib.request
-from datetime import datetime
-from typing import List, Tuple
+import argparse
+import datetime
+import os
+import time
 
-import duckdb
 import pandas as pd
+import requests
 
-# Eurostat API endpoint for HICP (monthly) – we request a few major countries.
-_EUROSTAT_URL = (
-    "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/hicp?"
-    "time=2023&sex=T&age=TOTAL&geo=DE,FR,IT,ES,NL"
-)
+from storage_utils import write_partitioned
 
+BASE_URL = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_midx"
+COICOP_GROUPS = ["CP00", "CP01"]
+UNIT = "I15"
 
-def _fetch_eurostat_json(url: str) -> dict:
-    """Fetch JSON payload from Eurostat, with fallback sample data for testing."""
-    try:
-        with urllib.request.urlopen(url) as response:
-            if response.status != 200:
-                raise RuntimeError(f"Eurostat request failed: {response.status}")
-            data = response.read().decode("utf-8")
-            return json.loads(data)
-    except Exception:
-        # Fallback sample payload with minimal data for tests and offline runs
-        sample = {
-            "dimension": {
-                "geo": {"category": {"index": {"DE": 0, "FR": 1, "IT": 2, "ES": 3, "NL": 4}}},
-                "time": {"category": {"index": {"2023M01": 0, "2023M02": 1, "2023M03": 2, "2023M04": 3, "2023M05": 4}}},
-            },
-            "value": {
-                "0": "102.5", "1": "99.3", "2": "101.1", "3": "100.5", "4": "101.2",
-                "5": "101.0", "6": "100.2", "7": "99.8", "8": "101.4", "9": "102.1",
-                "10": "98.5", "11": "102.3", "12": "103.1", "13": "101.9", "14": "104.0",
-                "15": "103.2", "16": "104.1", "17": "105.0", "18": "103.8", "19": "102.9",
-                "20": "101.8", "21": "100.9", "22": "102.2", "23": "104.5", "24": "105.1"
-            },
-        }
-        return sample
+OUTPUT_DIR = os.path.join("storage", "raw", "eurostat", "hicp")
+MAX_RETRIES = 3
+BACKOFF_SECONDS = 20
+INCREMENTAL_MONTHS = 24
 
 
-def _parse_hicp(json_data: dict) -> pd.DataFrame:
-    """Transform Eurostat JSON structure into a tidy DataFrame.
-
-    Eurostat returns a ``dimension`` block describing the ordering of values.
-    We extract the ``geo`` (country) and ``time`` dimensions and pair them
-    with the flat ``value`` array.
-    """
-    # Extract dimension orders
-    geo_order: List[str] = json_data["dimension"]["geo"]["category"]["index"].keys()
-    time_order: List[str] = json_data["dimension"]["time"]["category"]["index"].keys()
-
-    # The value array is a flat list whose length equals len(geo) * len(time)
-    values = json_data.get("value", {})
-    rows: List[Tuple[datetime, str, float, str]] = []
-    for i, geo in enumerate(geo_order):
-        for j, time_str in enumerate(time_order):
-            # Compute the flat index based on the ordering Eurostat uses.
-            flat_index = i * len(time_order) + j
-            key = str(flat_index)
-            if key not in values:
-                continue
-            raw_val = values[key]
-            try:
-                val = float(raw_val)
-            except (TypeError, ValueError):
-                continue
-            # Convert "2023M01" or "2023" to a proper date (first day of month)
-            if "M" in time_str:
-                year, month = time_str.split("M")
-                dt = datetime(int(year), int(month), 1)
-            else:
-                dt = datetime(int(time_str), 1, 1)
-            rows.append((dt, geo, val, "index"))
-    df = pd.DataFrame(rows, columns=["date", "country", "value", "unit"])
-    return df
+def fetch_coicop(coicop: str) -> dict:
+    params = {"format": "JSON", "lang": "EN", "coicop": coicop, "unit": UNIT}
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            r = requests.get(BASE_URL, params=params, timeout=60)
+            if r.status_code == 200:
+                return r.json()
+            print(f"  HTTP {r.status_code} for coicop={coicop}: {r.text[:150]}")
+            return {}
+        except requests.RequestException as exc:
+            print(f"  Request error (attempt {attempt}) for coicop={coicop}: {exc}")
+            time.sleep(BACKOFF_SECONDS * attempt)
+    return {}
 
 
-def run_pipeline(db_path: str) -> None:
-    """Execute the Eurostat HICP pipeline.
+def parse_jsonstat(payload: dict) -> pd.DataFrame:
+    """Flatten a JSON-stat 2.0 cube into long rows: geo, coicop, unit, date, value."""
+    if not payload or "value" not in payload:
+        return pd.DataFrame()
 
-    Parameters
-    ----------
-    db_path: str
-        Path to the DuckDB database file where the ``hicp`` table will be stored.
-    """
-    # 1. Fetch raw JSON data
-    json_data = _fetch_eurostat_json(_EUROSTAT_URL)
+    dim_ids = payload["id"]                     # e.g. ["freq","unit","coicop","geo","time"]
+    sizes = payload["size"]                     # e.g. [1,1,1,45,360]
 
-    # 2. Parse into a tidy DataFrame
-    df = _parse_hicp(json_data)
+    cat_index = {}   # dim_id -> {category_code: position}
+    for dim_id in dim_ids:
+        cat_index[dim_id] = payload["dimension"][dim_id]["category"]["index"]
 
-    # 3. Load into DuckDB, creating the table if needed
-    con = duckdb.connect(db_path)
-    con.execute(
-        """
-        CREATE TABLE IF NOT EXISTS hicp (
-            date DATE,
-            country VARCHAR,
-            value DOUBLE,
-            unit VARCHAR
-        )
-        """
+    # Invert each dim's index -> ordered list of category codes by position
+    pos_to_code = {}
+    for dim_id, idx_map in cat_index.items():
+        ordered = sorted(idx_map.items(), key=lambda kv: kv[1])
+        pos_to_code[dim_id] = [code for code, _ in ordered]
+
+    strides = [1] * len(sizes)
+    for i in range(len(sizes) - 2, -1, -1):
+        strides[i] = strides[i + 1] * sizes[i + 1]
+
+    rows = []
+    values = payload["value"]
+    keys = values.keys() if isinstance(values, dict) else range(len(values))
+    for key in keys:
+        flat_idx = int(key)
+        val = values[key] if isinstance(values, dict) else values[flat_idx]
+        if val is None:
+            continue
+        coords = {}
+        remainder = flat_idx
+        for dim_id, stride in zip(dim_ids, strides):
+            pos = remainder // stride
+            remainder %= stride
+            coords[dim_id] = pos_to_code[dim_id][pos]
+        rows.append({
+            "geo": coords.get("geo"),
+            "coicop": coords.get("coicop"),
+            "unit": coords.get("unit"),
+            "date": coords.get("time"),
+            "value": val,
+        })
+    return pd.DataFrame(rows)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Eurostat HICP pipeline")
+    parser.add_argument("--backfill", action="store_true",
+                        help="Keep the full 1996->present history (default keeps last 24 months)")
+    args = parser.parse_args()
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    today = now.strftime("%Y%m%d")
+    mode = "backfill" if args.backfill else "incremental"
+    print(f"Eurostat HICP  mode={mode}")
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    frames = []
+    for coicop in COICOP_GROUPS:
+        print(f"  Fetching coicop={coicop}...")
+        payload = fetch_coicop(coicop)
+        df = parse_jsonstat(payload)
+        if not df.empty:
+            frames.append(df)
+            print(f"    {len(df):,} observations")
+        time.sleep(1)
+
+    if not frames:
+        print("  No data downloaded.")
+        return
+
+    out = pd.concat(frames, ignore_index=True)
+    out["date"] = pd.to_datetime(out["date"] + "-01", errors="coerce")
+    out["series_id"] = out["geo"] + "." + out["coicop"] + "." + out["unit"]
+    out = out.dropna(subset=["geo", "coicop", "date", "value"])
+    print(f"  Parsed {len(out):,} total observations")
+
+    if not args.backfill:
+        cutoff = (now - datetime.timedelta(days=30 * INCREMENTAL_MONTHS)).date()
+        out = out[out["date"].dt.date >= cutoff]
+        print(f"  Incremental: kept {len(out):,} rows since {cutoff}")
+
+    if out.empty:
+        print("  Nothing to write.")
+        return
+
+    out["fetched_at"] = now.isoformat()
+    out = out.sort_values(["geo", "coicop", "date"]).reset_index(drop=True)
+
+    path = write_partitioned(
+        out, OUTPUT_DIR,
+        f"eurostat_hicp_{mode}_{today}.parquet",
     )
-    # Use DuckDB's built‑in pandas ingestion for efficiency
-    con.register("tmp_hicp", df)
-    con.execute("INSERT INTO hicp SELECT * FROM tmp_hicp")
-    con.unregister("tmp_hicp")
-    con.close()
+    print(f"  -> {path}  ({len(out):,} rows, {out['geo'].nunique()} geos, "
+          f"{out['coicop'].nunique()} coicop groups)")
+
+    print("\n--- EUROSTAT HICP PIPELINE COMPLETE ---")
+
+
+if __name__ == "__main__":
+    main()

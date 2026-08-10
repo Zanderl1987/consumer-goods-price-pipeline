@@ -1,20 +1,29 @@
-import os
-import tempfile
-import duckdb
-import pytest
+import pandas as pd
 
-from eurostat_hicp_pipeline import run_pipeline as eurostat_run
+from eurostat_hicp_pipeline import parse_jsonstat
 
-def test_eurostat_hicp_pipeline_creates_table():
-    # Create a temporary duckdb file
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test_eurostat.db")
-        eurostat_run(db_path)
-        con = duckdb.connect(db_path)
-        # Verify table exists
-        tables = con.execute("SHOW TABLES").fetchall()
-        assert ("hicp",) in tables
-        # Verify at least one row
-        count = con.execute("SELECT COUNT(*) FROM hicp").fetchone()[0]
-        assert count > 0
-        con.close()
+
+def test_parse_jsonstat_flattens_cube():
+    payload = {
+        "id": ["freq", "unit", "coicop", "geo", "time"],
+        "size": [1, 1, 1, 2, 2],
+        "dimension": {
+            "freq": {"category": {"index": {"M": 0}}},
+            "unit": {"category": {"index": {"I15": 0}}},
+            "coicop": {"category": {"index": {"CP00": 0}}},
+            "geo": {"category": {"index": {"DE": 0, "FR": 1}}},
+            "time": {"category": {"index": {"2023M01": 0, "2023M02": 1}}},
+        },
+        "value": {"0": 102.5, "1": 103.0, "2": 100.5, "3": 101.0},
+    }
+    df = parse_jsonstat(payload)
+    assert len(df) == 4
+    assert set(df["geo"]) == {"DE", "FR"}
+    assert set(df["time"]) == {"2023M01", "2023M02"}
+    assert set(df["coicop"]) == {"CP00"}
+    assert df["value"].tolist() == [102.5, 103.0, 100.5, 101.0]
+
+
+def test_parse_jsonstat_handles_empty():
+    assert parse_jsonstat({}).empty
+    assert parse_jsonstat({"value": {}}).empty

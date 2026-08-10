@@ -148,18 +148,25 @@ SCHEMAS: dict[str, dict] = {
         "value_ranges": {"price_usd_gallon": (0, 20)},
     },
     "eia_electricity_price": {
-        "required":    ["series_id", "date", "value"],
-        "critical_nn": ["series_id", "date", "value"],
+        "required":    ["series_id", "date", "cents_per_kwh"],
+        "critical_nn": ["series_id", "date", "cents_per_kwh"],
         "date_col":    "date",
+        "value_ranges": {"cents_per_kwh": (0, 200)},
     },
     "eia_natgas_price": {
-        "required":    ["series_id", "date", "value"],
-        "critical_nn": ["series_id", "date", "value"],
+        "required":    ["series_id", "date", "price"],
+        "critical_nn": ["series_id", "date", "price"],
         "date_col":    "date",
+        "value_ranges": {"price": (0, 1000)},
     },
     "kroger_products": {
         "required":    ["upc", "product_name", "price", "fetched_at"],
         "critical_nn": ["upc", "product_name", "price"],
+        "value_ranges": {"price": (0, 100000)},
+    },
+    "bestbuy_products": {
+        "required":    ["sku", "product_name", "price", "fetched_at"],
+        "critical_nn": ["sku", "product_name", "price"],
         "value_ranges": {"price": (0, 100000)},
     },
     "walmart_products": {
@@ -173,21 +180,22 @@ SCHEMAS: dict[str, dict] = {
         "value_ranges": {"price": (0, 10000000)},
     },
     "openfoodfacts_prices": {
-        "required":    ["code", "product_name", "price", "fetched_at"],
-        "critical_nn": ["code", "price"],
+        "required":    ["id", "price", "currency", "date", "fetched_at"],
+        "critical_nn": ["id", "price", "currency", "date"],
+        "date_col":    "date",
         "value_ranges": {"price": (0, 100000)},
     },
     "cms_drug_pricing": {
-        "required":    ["ndc", "drug_name", "year"],
-        "critical_nn": ["ndc", "drug_name", "year"],
-        "date_col":    "year",
+        "required":    ["drug_name", "brand_name", "spending_year", "avg_spend_per_dosage_unit"],
+        "critical_nn": ["drug_name", "spending_year"],
+        "value_ranges": {"avg_spend_per_dosage_unit": (0, 100000)},
     },
     "hospital_prices": {
         "required":    ["hospital_name", "item_name", "price"],
         "critical_nn": ["hospital_name", "item_name"],
         "value_ranges": {"price": (0, 100000000)},
     },
-    "eurostat_hpcp": {
+    "eurostat_hicp": {
         "required":    ["series_id", "date", "value"],
         "critical_nn": ["series_id", "date", "value"],
         "date_col":    "date",
@@ -203,15 +211,22 @@ SCHEMAS: dict[str, dict] = {
         "date_col":    "date",
         "value_ranges": {"price": (0, 100000)},
     },
+    "wfp_food_prices": {
+        "required":    ["countryiso3", "commodity", "date", "price", "usdprice"],
+        "critical_nn": ["countryiso3", "commodity", "date", "price"],
+        "date_col":    "date",
+        "value_ranges": {"usdprice": (0, 100000)},
+    },
     "fao_food_prices": {
-        "required":    ["item", "date", "value"],
-        "critical_nn": ["item", "date", "value"],
+        "required":    ["area", "item", "date", "value"],
+        "critical_nn": ["area", "item", "date", "value"],
         "date_col":    "date",
     },
     "fao_meat_prices": {
-        "required":    ["item", "date", "value"],
-        "critical_nn": ["item", "date", "value"],
+        "required":    ["area", "item", "date", "value"],
+        "critical_nn": ["area", "item", "date", "value"],
         "date_col":    "date",
+        "value_ranges": {"value": (0, 100000)},
     },
     "worldbank_pinksheet": {
         "required":    ["series_id", "date", "value"],
