@@ -18,6 +18,29 @@ every pipeline pulls and which table it lands in.
 [docs/SOURCES.md](docs/SOURCES.md) is the researched index of every free data
 source considered (coverage, key requirements, update cadence).
 
+## What's in the store
+
+Current local build, roughly 1.09 million rows across 22 populated tables. The largest:
+
+| Table | Rows | Coverage |
+|---|---:|---|
+| `wfp_food_prices` | 648,189 | 2025-01 to 2026-08 |
+| `openfoodfacts_prices` | 287,566 | 2010-07 to 2026-08 |
+| `usda_ams_wholesale` | 83,804 | 2026-07 to 2026-08 |
+| `fao_food_prices` | 32,597 | 2023-01 to 2026-03 |
+| `statcan_retail_prices` | 14,260 | 2025-08 to 2026-06 |
+| `usda_ams_retail` | 4,182 | 2026-07 to 2026-08 |
+| `usda_prices_received` | 3,850 | 2021-01 to 2026-07 |
+| `worldbank_pinksheet` | 1,608 | 2024-09 to 2026-07 |
+| `oecd_cpi` | 1,648 | 2024-08 to 2026-07 |
+| `imf_commodities` | 1,518 | 2024-09 to 2026-07 |
+
+Government series (BLS CPI/PPI and average prices, EIA energy, FRED consumer series)
+are smaller by row count and longer by history, which is the point of carrying both:
+the official series tell you what happened to the index, the crowdsourced and wholesale
+feeds tell you what individual items cost. Two registered tables (`kroger_products`,
+`cms_drug_pricing`) are wired into the query layer but not yet populated.
+
 ## What's in here
 
 - **26 registered tables** in the query layer CATALOG across US government
