@@ -82,8 +82,17 @@ q.date_range()      # min/max dates across the store
 q.schema("usda_ams_wholesale")
 ```
 
-## Notes on this machine
+## Testing
 
-Python is the Anaconda base env at `C:\ProgramData\anaconda3\python.exe`
-(bare `python` on PATH is a broken MS Store stub). Anaconda provides the full
-data stack (pandas, pyarrow, duckdb, requests, python-dotenv, pytest).
+```
+python -m pytest tests -v
+```
+
+78 tests cover Hive partitioning and read-back, natural-key dedup semantics,
+validation severity/schema coverage, and guard tests that fail if a new
+pipeline isn't registered in every layer it needs to be (CATALOG, SCHEMAS,
+KEYS, `run_all.py`).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
