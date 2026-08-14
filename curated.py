@@ -78,6 +78,15 @@ KEYS: dict[str, list[str]] = {
     # 2026-08-04, a 99%+ row-count collapse on this pipeline's first run).
     "usda_prices_received":   ["commodity", "description", "date"],
     "usda_prices_paid":       ["commodity", "description", "date"],
+    # NOAA FOSS commercial landings — deliberately NOT keyed, same reasoning
+    # as usda_ams above. Confirmed live 2026-08-14: ~1,328 rows (0.8% of the
+    # commercial table) carry species="WITHHELD FOR CONFIDENTIALITY",
+    # species_tsn=0 -- NOAA's small-cell suppression collapses genuinely
+    # different real species/vessels into one identical placeholder per
+    # state/region/year/source, with a real (aggregated) dollars/pounds
+    # value. species+state+region+year+source still collided on these rows;
+    # no field anywhere distinguishes them. Full-row dedup only removes
+    # exact re-fetched duplicates, which is correct here.
     # EIA energy — one price per area/product/date
     "eia_gas_retail":         ["duoarea", "product", "date"],
     "eia_gas_spot":           ["series", "date"],

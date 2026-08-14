@@ -67,6 +67,7 @@ CATALOG: dict[str, str] = {
     "usda_ams_retail":          _glob("usda/ams_retail/**/*.parquet"),
     "usda_prices_received":     _glob("usda/prices_received/**/*.parquet"),
     "usda_prices_paid":         _glob("usda/prices_paid/**/*.parquet"),
+    "noaa_seafood_landings":    _glob("noaa/seafood_landings/**/*.parquet"),
     # ── Energy — retail consumer prices (EIA) ───────────────────────────────
     "eia_gas_retail":           _glob("eia/gas_retail/**/*.parquet"),
     "eia_gas_spot":             _glob("eia/gas_spot/**/*.parquet"),

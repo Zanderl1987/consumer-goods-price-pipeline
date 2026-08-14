@@ -25,6 +25,7 @@ free API key.
 | `worldbank_pinksheet_pipeline.py` | `worldbank_pinksheet` | World Bank Pink Sheet — ~70 global commodity benchmark prices, nominal USD since 1960. Resolves the current release's rotating-hash download URL live from the landing page each run | keyless |
 | `imf_commodities_pipeline.py` | `imf_commodities` | IMF PCPS — ~40 tracked commodity benchmark prices (index + USD unit-price), monthly since the 1980s-90s | keyless |
 | `cms_drug_pricing_pipeline.py` | `cms_drug_pricing` | CMS Medicare Part D spending by drug, brand/generic/manufacturer x year. Program reimbursement, not retail cash price | keyless |
+| `noaa_seafood_landings_pipeline.py` | `noaa_seafood_landings` | NOAA FOSS commercial landings — ex-vessel (dockside) seafood prices, per species/state/region/year, 1950-present. `price_per_lb` derived from dollars/pounds; no direct price field. Old NEFSC market-news page is dead, replaced by the live `apps-st.fisheries.noaa.gov/ods/foss` REST API (found live 2026-08-14) | keyless |
 
 ## Stage 2 — retail / e-commerce / crowdsourced
 

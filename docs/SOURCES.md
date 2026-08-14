@@ -29,6 +29,7 @@ earlier assumptions are flagged inline.
 | **EIA Open Data v2** | Free key (DEMO_KEY keyless works for testing) — https://www.eia.gov/opendata/register.php | Weekly retail gasoline/diesel (US + state), electricity price ($/kWh), natural gas residential. API v1 dead since Nov 2022 | Weekly (gas Wed.) / monthly | 5,000 rows/request cap -> paginate with offset/length. Bulk files keyless. **PIPELINE: eia_energy (built)** |
 | **FRED** | Free key — https://fredaccount.stlouisfed.org/apikeys | 800k+ series: used-car CPI, headline CPI, PPI tires, retail sales. Auth via `Authorization: Bearer` header | Monthly (CPI release day) | ~120 req/min. **PIPELINE: fred_consumer (built)** |
 | **Census Bureau retail trade** | Free key (required for every query since May 2026) — https://api.census.gov/data/key_signup.html | Monthly retail **sales $** by NAICS. **No prices at all** | Monthly | Dead end for a price pipeline (sales value, not prices). **REJECTED** |
+| **NOAA Fisheries (FOSS) Commercial Landings** | Keyless — `https://apps-st.fisheries.noaa.gov/ods/foss/landings/` (Oracle ORDS REST) | Ex-vessel (dockside) seafood prices — species x state x region x year, 1950-present, ~159k commercial rows. `price_per_lb` = dollars/pounds (no direct price field) | Annual | **Live-verified 2026-08-14.** The old NEFSC "Boston/NY Market News" page (nefsc.noaa.gov/read/socialsci/marketNews.php) is dead (301s to a generic region page; its InPort metadata also flags internal-network access constraints). Found the real replacement via InPort item 10574's `ords/foss/metadata-catalog` link, which redirects to the current `apps-st.fisheries.noaa.gov` host. `q={"collection":"Commercial"}` param filters out null-priced MRIP recreational rows; the ORDS WAF (Akamai) 403s any `$` character in the query string, so operator filters like `$gte` don't work — paginate the full table instead (16 pages at limit=10000, a few seconds, no key/quota). ~0.8% of rows are `species="WITHHELD FOR CONFIDENTIALITY"` (NOAA small-cell suppression) — same non-key-able multi-row collision pattern as USDA AMS; left out of `curated.py` KEYS. **PIPELINE: noaa_seafood_landings (built 2026-08-14)** |
 
 ## International statistics
 
@@ -76,6 +77,10 @@ earlier assumptions are flagged inline.
 | Census retail trade | Sales dollars only, no prices; now key-gated |
 | Walmart / Amazon / Target / HD / Lowe's / Costco / IKEA | No viable free tier (approval gates or no API at all) |
 | Kaggle mirrors (WFP, Blinkit, Zenodo) | Static/stale snapshots; use the underlying HDX/API instead |
+| GlobalPetrolPrices | Paid subscription, only a 2-week free trial, no lasting free tier. Redundant with EIA/StatCan/Eurostat anyway (checked 2026-08-14) |
+| Grocery-price scraper APIs (Apify "Grocery Prices", RapidAPI "Grocery API", FoodDataScrape) | Paid scraping-as-a-service, ToS risk against the underlying retailers, not real free sources (checked 2026-08-14) |
+| USDA ERS Food Price Outlook | Excel-download only, no API; forecasts not actuals; redundant with BLS CPI food already in this repo (checked 2026-08-14) |
+| ONS UK API (`api.beta.ons.gov.uk`) | Real keyless REST API, but the only price-relevant dataset (`cpih01`) is index-only and UK-only, redundant with existing `eurostat_hicp` UK series (checked 2026-08-14) |
 
 ## Recommendations
 

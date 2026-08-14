@@ -78,6 +78,15 @@ CPI_SERIES = {
     "CUUR0000SS62021": ("CPI Motor Vehicle Parts & Equipment", "Index 1982-84=100"),
 }
 
+
+# Correction (verified live 2026-08-14, first live run of the bls_ppi table):
+# the original PCU3363/PCU336111336111/PCU335221335221 IDs 400 with "Series
+# does not exist". BLS PCU industry series key off the exact 6-digit NAICS
+# industry code doubled (e.g. automobile mfg is NAICS 336110, not 336111;
+# household appliance mfg is 335220, not 335221) -- a plausible-looking
+# adjacent code silently fails. Motor Vehicle Parts Mfg (NAICS 3363, a
+# 4-digit subsector with no single reporting industry) has no working
+# PCU total-industry series found live -- dropped rather than guessed.
 PPI_SERIES = {
     "WPU00000000":   ("PPI All Commodities",                    "Index 1982=100"),
     "WPSFD41":       ("PPI Finished Consumer Goods",            "Index 1982=100"),
@@ -85,9 +94,8 @@ PPI_SERIES = {
     "WPU101":        ("PPI Farm Products",                      "Index 1982=100"),
     "WPU0561":       ("PPI Gasoline",                           "Index 1982=100"),
     "WPU15":         ("PPI Rubber & Plastic Products",          "Index 1982=100"),
-    "PCU3363":       ("PPI Motor Vehicle Parts Mfg",            "Index 2012=100"),
-    "PCU336111336111": ("PPI Automobile Manufacturing",         "Index 2012=100"),
-    "PCU335221335221": ("PPI Household Appliance Manufacturing","Index 2012=100"),
+    "PCU336110336110": ("PPI Automobile Manufacturing",         "Index 2012=100"),
+    "PCU335220335220": ("PPI Household Appliance Manufacturing","Index 2012=100"),
     "PCU334310334310": ("PPI Audio & Video Equipment Mfg",      "Index 2012=100"),
     "PCU334118334118": ("PPI Computer Terminal Mfg",            "Index 2012=100"),
     "PCU325414325414": ("PPI Biological Product Mfg",           "Index 2012=100"),

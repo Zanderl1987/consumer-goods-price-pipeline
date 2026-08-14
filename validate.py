@@ -135,6 +135,12 @@ SCHEMAS: dict[str, dict] = {
         "critical_nn": ["commodity", "date", "value"],
         "date_col":    "date",
     },
+    "noaa_seafood_landings": {
+        "required":    ["species", "state", "landing_year", "date", "pounds", "dollars"],
+        "critical_nn": ["species", "date"],
+        "date_col":    "date",
+        "value_ranges": {"price_per_lb": (0, 5000)},
+    },
     "eia_gas_retail": {
         "required":    ["duoarea", "product", "date", "price_usd_gallon"],
         "critical_nn": ["duoarea", "product", "date", "price_usd_gallon"],

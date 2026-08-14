@@ -18,6 +18,7 @@ EXPECTED_TABLES = [
     "usda_ams_retail",
     "usda_prices_received",
     "usda_prices_paid",
+    "noaa_seafood_landings",
     "eia_gas_retail",
     "eia_gas_spot",
     "eia_electricity_price",

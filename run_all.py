@@ -100,6 +100,15 @@ PIPELINES: list[PipelineSpec] = [
         timeout=600,
     ),
     PipelineSpec(
+        name="noaa_seafood_landings",
+        file="noaa_seafood_landings_pipeline.py",
+        desc="NOAA FOSS commercial seafood landings - ex-vessel (dockside) prices",
+        stage=1,
+        tables=["noaa_seafood_landings"],
+        backfill_args=["--backfill"],
+        timeout=300,
+    ),
+    PipelineSpec(
         name="eia_energy",
         file="eia_energy_prices_pipeline.py",
         desc="EIA retail energy - gasoline/diesel, electricity, natural gas",
