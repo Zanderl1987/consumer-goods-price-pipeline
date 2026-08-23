@@ -492,8 +492,6 @@ def main() -> int:
         return 0 if validate_table(args.table).passed else 1
 
     summary = validate_all()
-    no_data = [t for t, row in summary.set_index("table").iterrows()
-               if "no files" in str(row.to_dict())]
     summary_display = summary.copy()
     if not args.all:
         summary_display = summary[~summary["table"].isin(

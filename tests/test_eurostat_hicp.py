@@ -1,4 +1,3 @@
-import pandas as pd
 
 from eurostat_hicp_pipeline import parse_jsonstat
 

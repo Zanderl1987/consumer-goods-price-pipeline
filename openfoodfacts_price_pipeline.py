@@ -13,9 +13,7 @@ Columns expected by the query layer:
     date (DATE) – the date of ingestion (UTC today)
 """
 
-import os
 import datetime
-import json
 from pathlib import Path
 import pandas as pd
 import requests

@@ -473,7 +473,7 @@ def main() -> int:
     start_time = time.time()
 
     print(f"\n{'=' * 62}")
-    print(f"  Consumer-Goods Price Pipeline Runner")
+    print("  Consumer-Goods Price Pipeline Runner")
     print(f"  Mode: {mode}  |  Pipelines: {len(pipelines)}  |  "
           f"Validate: {validate}  |  Compact: {compact}")
     print(f"{'=' * 62}")

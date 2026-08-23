@@ -10,7 +10,6 @@ The free API key should be placed in an environment variable named
 import os
 import json
 import urllib.request
-from datetime import datetime
 from typing import List
 
 import duckdb

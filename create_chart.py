@@ -1,7 +1,5 @@
-import pandas as pd
 import matplotlib.pyplot as plt
 import query
-import os
 
 def create_chart():
     df = query.load("openfoodfacts_prices")

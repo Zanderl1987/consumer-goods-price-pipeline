@@ -223,7 +223,7 @@ def main():
                 time.sleep(REQUEST_INTERVAL)
 
         if not all_frames:
-            print(f"  No data returned.\n")
+            print("  No data returned.\n")
             continue
 
         combined = (
