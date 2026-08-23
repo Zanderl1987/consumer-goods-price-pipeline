@@ -46,7 +46,7 @@ comment block; CATALOG rows, SCHEMAS, KEYS already wired in `query.py`,
 | `ebay_pipeline.py` | `ebay_listings` | eBay Browse API — used goods, electronics | `EBAY_APP_ID` |
 | `walmart_pipeline.py` | `walmart_products` | Walmart Product/Affiliate API — **no general free tier, rejected** | `WALMART_API_KEY` |
 | `numbeo_pipeline.py` | (TBD) | Cost-of-living price data — **paid API, rejected** | keyless |
-| `hospital_prices_pipeline.py` | `hospital_prices` | Hospital price transparency files (via aggregator) | keyless |
+| `hospital_prices_pipeline.py` | `hospital_prices` | Hospital price transparency files (via aggregator) — **spiked 2026-08-14, NO-GO on both live candidates, see `docs/SOURCES.md`** | keyless |
 
 ## Validation coverage
 
