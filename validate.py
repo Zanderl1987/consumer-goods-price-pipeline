@@ -255,8 +255,8 @@ SCHEMAS: dict[str, dict] = {
         "date_col":    "date",
     },
     "fred_cpi": {
-        "required":    ["date", "value", "series"],
-        "critical_nn": ["date", "value", "series"],
+        "required":    ["series_id", "date", "value"],
+        "critical_nn": ["series_id", "date", "value"],
         "date_col":    "date",
     },
     "apininja_inflation": {

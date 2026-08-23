@@ -117,6 +117,7 @@ KEYS: dict[str, list[str]] = {
     # FRED — one value per series per date
     "fred_consumer_prices":   ["series_id", "date"],
     "fred_used_cars":         ["series_id", "date"],
+    "fred_cpi":               ["series_id", "date"],
 }
 
 

@@ -1,120 +1,133 @@
-# fred_cpi_pipeline.py
-"""FRED Consumer Price Index (CPI) pipeline.
-Fetches CPI series from the Federal Reserve Economic Data (FRED) API
-and stores the result in a DuckDB table `fred_cpi`.
+#!/usr/bin/env python3
+"""
+FRED Headline CPI Pipeline — the broad, index-level Consumer Price Index
+series from the St. Louis Fed FRED API (free key at
+https://fred.stlouisfed.org/docs/api/api_key.html).
 
-The API key can be supplied via the environment variable `FRED_API_KEY`
-(e.g., in a .env file). The free tier allows unlimited requests for
-most series.
+Complements fred_consumer_prices_pipeline.py, which covers narrow retail
+sub-indices (used cars, gasoline, food-at-home, ...) — this pipeline covers
+the headline/core aggregate series those sub-indices roll up into.
+
+CLI:
+  python fred_cpi_pipeline.py             # incremental (last 5 years)
+  python fred_cpi_pipeline.py --backfill  # full history
+
+Outputs:
+  storage/raw/fred/cpi/fred_cpi_{mode}_{YYYYMMDD}.parquet  (CATALOG: fred_cpi)
 """
 
+import argparse
+import datetime
 import os
-import json
-import urllib.request
-from datetime import datetime
-from typing import List
+import time
 
-import duckdb
 import pandas as pd
+import requests
+from dotenv import load_dotenv
 
-FRED_API_KEY = os.getenv("FRED_API_KEY", "")
-# Example series: CPIAUCSL (U.S. CPI for All Urban Consumers)
-DEFAULT_SERIES = os.getenv("FRED_SERIES", "CPIAUCSL")
-BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
+from storage_utils import write_partitioned
 
+load_dotenv()
 
-def _fetch_fred(series: str, start_year: int = 2000) -> dict:
-    """Fetch observations for a given series.
+FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
+FRED_BASE = "https://api.stlouisfed.org/fred/series/observations"
 
-    Parameters
-    ----------
-    series: str
-        FRED series ID.
-    start_year: int
-        Year from which to start fetching data.
-    """
-    params = {
-        "series_id": series,
-        "observation_start": f"{start_year}-01-01",
-        "api_key": FRED_API_KEY,
-        "file_type": "json",
-    }
-    query = "&".join(f"{k}={v}" for k, v in params.items())
-    url = f"{BASE_URL}?{query}"
-    try:
-        with urllib.request.urlopen(url) as resp:
-            if resp.status != 200:
-                raise RuntimeError(f"FRED request failed: {resp.status}")
-            data = resp.read().decode("utf-8")
-            return json.loads(data)
-    except Exception:
-        # Fallback sample payload when API key is missing or network fails
-        print(f"FRED API request failed for {series}. Using fallback sample data.")
-        return {
-            "observations": [
-                {"date": "2023-01-01", "value": "298.99"},
-                {"date": "2023-02-01", "value": "300.54"},
-                {"date": "2023-03-01", "value": "301.81"}
-            ]
-        }
+OUTPUT_DIR = os.path.join("storage", "raw", "fred", "cpi")
+REQUEST_INTERVAL = 0.35
+MAX_RETRIES = 3
+BACKOFF_SECONDS = 30
+INCREMENTAL_YEARS = 5
+
+CPI_SERIES = {
+    "CPIAUCSL": "CPI-U All Items (Seasonally Adjusted)",
+    "CPIAUCNS": "CPI-U All Items (Not Seasonally Adjusted)",
+    "CPILFESL": "CPI-U Core (All Items Less Food & Energy)",
+}
 
 
-def _parse_observations(payload: dict) -> pd.DataFrame:
-    """Convert FRED observations to a tidy DataFrame.
-    Expected columns: date, value (float).
-    """
-    observations = payload.get("observations", [])
-    rows: List[dict] = []
-    for obs in observations:
-        date_str = obs.get("date")
-        value = obs.get("value")
-        if value in (".", None):
+def fetch_series(series_id, start_date=None):
+    params = {"api_key": FRED_API_KEY, "file_type": "json", "series_id": series_id}
+    if start_date:
+        params["observation_start"] = start_date
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            r = requests.get(FRED_BASE, params=params, timeout=30)
+            if r.status_code == 200:
+                data = r.json()
+                return data.get("observations", [])
+            if r.status_code == 429:
+                wait = BACKOFF_SECONDS * attempt
+                print(f"  429 -- backing off {wait}s (attempt {attempt}/{MAX_RETRIES})")
+                time.sleep(wait)
+            else:
+                print(f"  HTTP {r.status_code}: {r.text[:150]}")
+                return []
+        except requests.RequestException as e:
+            print(f"  Request error (attempt {attempt}): {e}")
+            time.sleep(BACKOFF_SECONDS)
+    return []
+
+
+def parse_observations(series_id, obs_list):
+    rows = []
+    for obs in obs_list:
+        value = obs.get("value", ".")
+        if value == "." or value == "":
             continue
         try:
-            val = float(value)
-        except ValueError:
+            value = float(value)
+        except (ValueError, TypeError):
             continue
-        rows.append({"date": datetime.strptime(date_str, "%Y-%m-%d"), "value": val})
-    df = pd.DataFrame(rows)
-    return df
+        date = pd.to_datetime(obs.get("date"))
+        if pd.isna(date):
+            continue
+        rows.append({
+            "series_id": series_id,
+            "date":      date.strftime("%Y-%m-%d"),
+            "value":     value,
+        })
+    return rows
 
 
-def run_pipeline(db_path: str, series: str = DEFAULT_SERIES) -> None:
-    """Execute the FRED CPI pipeline.
+def main():
+    parser = argparse.ArgumentParser(description="FRED headline CPI pipeline")
+    parser.add_argument("--backfill", action="store_true",
+                        help="Fetch full history")
+    args = parser.parse_args()
 
-    Parameters
-    ----------
-    db_path: str
-        Path to DuckDB database file.
-    series: str, optional
-        FRED series ID to fetch (default from env or CPIAUCSL).
-    """
-    payload = _fetch_fred(series)
-    df = _parse_observations(payload)
-    con = duckdb.connect(db_path)
-    con.execute(
-        """
-        CREATE TABLE IF NOT EXISTS fred_cpi (
-            date DATE,
-            value DOUBLE,
-            series VARCHAR
-        )
-        """
-    )
-    df["series"] = series
-    con.register("tmp_fred", df)
-    con.execute("INSERT INTO fred_cpi SELECT * FROM tmp_fred")
-    con.unregister("tmp_fred")
-    con.close()
+    if not FRED_API_KEY:
+        print("ERROR: No FRED_API_KEY found. Register free at https://fred.stlouisfed.org/docs/api/api_key.html")
+        return
 
-def main(db_path: str, series: str = DEFAULT_SERIES) -> None:
-    """Entry point for the pipeline."""
-    run_pipeline(db_path, series)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    today_str = datetime.datetime.utcnow().strftime("%Y%m%d")
+    mode = "backfill" if args.backfill else "incremental"
+    start = None if args.backfill else \
+        (datetime.datetime.utcnow() - datetime.timedelta(days=365 * INCREMENTAL_YEARS)).strftime("%Y-%m-%d")
+    print(f"FRED Headline CPI  mode={mode}")
+
+    all_rows = []
+    for sid, name in CPI_SERIES.items():
+        print(f"  {name}...", end=" ", flush=True)
+        obs = fetch_series(sid, start)
+        if obs:
+            all_rows.extend(parse_observations(sid, obs))
+            print(f"{len(obs)} obs")
+        else:
+            print("no data")
+        time.sleep(REQUEST_INTERVAL)
+
+    if not all_rows:
+        print("\nNo data returned.")
+        return
+
+    df = pd.DataFrame(all_rows)
+    df["fetched_at"] = datetime.datetime.utcnow().isoformat()
+    df = df.drop_duplicates(subset=["series_id", "date"]).sort_values(["series_id", "date"])
+    path = write_partitioned(df, OUTPUT_DIR, f"fred_cpi_{mode}_{today_str}.parquet")
+    print(f"\n[+] {path}  ({len(df):,} rows, {df['series_id'].nunique()} series)")
+    print("\n--- FRED HEADLINE CPI COMPLETE ---")
+
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Run FRED CPI pipeline")
-    parser.add_argument("--db", required=True, help="DuckDB database path")
-    parser.add_argument("--series", default=DEFAULT_SERIES, help="FRED series ID")
-    args = parser.parse_args()
-    main(args.db, args.series)
+    main()
