@@ -39,6 +39,19 @@ BLS_V1 = "https://api.bls.gov/publicAPI/v1/timeseries/data/"
 BLS_V2 = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
 BLS_URL = BLS_V2 if BLS_API_KEY else BLS_V1
 
+# Bulk flat-file mirror of the "Average Price" (AP) survey -- keyless, no
+# per-day request quota (unlike the timeseries API above, whose shared v1
+# quota gets exhausted repo-wide, and even machine-wide when
+# financial-data-pipeline runs a BLS backfill the same day). Full history,
+# updated monthly. BLS splits the survey across three files by topic; each
+# series below is tagged with which one it lives in.
+AP_FLATFILE_URLS = {
+    "food":            "https://download.bls.gov/pub/time.series/ap/ap.data.3.Food",
+    "household_fuels": "https://download.bls.gov/pub/time.series/ap/ap.data.1.HouseholdFuels",
+    "gasoline":        "https://download.bls.gov/pub/time.series/ap/ap.data.2.Gasoline",
+}
+AP_FLATFILE_HEADERS = {"User-Agent": "consumer-goods-price-pipeline research (contact: zander.s.luke@gmail.com)"}
+
 OUTPUT_DIR = os.path.join("storage", "raw", "bls", "avg_prices")
 REQUEST_INTERVAL = 1.5
 MAX_RETRIES = 3
@@ -46,69 +59,78 @@ BATCH_SIZE = 50 if BLS_API_KEY else 25
 BACKFILL_START_YEAR = 1980
 INCREMENTAL_YEARS = 2
 
-# (series_id, item, unit) — APU average-price codes. Prices are USD per unit.
+# (series_id, item, unit, flatfile_key) — APU average-price codes verified
+# 2026-08-24 against BLS's authoritative item catalog
+# (download.bls.gov/pub/time.series/ap/ap.item) and confirmed present in
+# their respective flat files. The previous catalog here had every series_id
+# mismatched against its label (an off-by-rows error from hand-guessing
+# codes rather than looking them up) -- e.g. "APU0000702111" was labeled
+# "Cheddar cheese" but is actually "Bread, white, pan"; ~half the codes
+# (energy, tea, salt, avocados, watermelon, cauliflower) didn't exist in the
+# BLS catalog at all and always returned nothing. Rebuilt from scratch.
 AVG_PRICE_SERIES = [
     # ── Dairy & eggs ───────────────────────────────────────────────────────
-    ("APU0000709112", "Milk, fresh, whole, per gallon",            "USD/gallon"),
-    ("APU0000709111", "Milk, fresh, whole, per half gallon",       "USD/half-gallon"),
-    ("APU0000709121", "Milk, fresh, lowfat, per gallon",           "USD/gallon"),
-    ("APU0000710311", "Eggs, grade A, large, per dozen",           "USD/dozen"),
-    ("APU0000702111", "Cheddar cheese, natural, per pound",        "USD/lb"),
-    ("APU0000701111", "Butter, salted, per pound",                 "USD/lb"),
-    ("APU0000712311", "Yogurt, plain, per 8 oz",                   "USD/8oz"),
-    ("APU0000712211", "Ice cream, prepackaged, bulk, per half gallon", "USD/half-gallon"),
+    ("APU0000709112", "Milk, fresh, whole, per gallon",              "USD/gallon",      "food"),
+    ("APU0000709111", "Milk, fresh, whole, per half gallon",         "USD/half-gallon", "food"),
+    ("APU0000709212", "Milk, fresh, low fat, per half gallon",       "USD/half-gallon", "food"),
+    ("APU0000709213", "Milk, fresh, low fat, per gallon",            "USD/gallon",      "food"),
+    ("APU0000708111", "Eggs, grade A, large, per dozen",             "USD/dozen",       "food"),
+    ("APU0000708112", "Eggs, grade AA, large, per dozen",            "USD/dozen",       "food"),
+    ("APU0000710211", "American processed cheese, per lb",           "USD/lb",          "food"),
+    ("APU0000710212", "Cheddar cheese, natural, per lb",              "USD/lb",          "food"),
+    ("APU0000710111", "Butter, salted, grade AA, stick, per lb",     "USD/lb",          "food"),
+    ("APU0000710122", "Yogurt, natural, fruit flavored, per 8 oz",   "USD/8oz",         "food"),
+    ("APU0000710411", "Ice cream, prepackaged, bulk, per half gallon", "USD/half-gallon", "food"),
     # ── Bakery & grains ────────────────────────────────────────────────────
-    ("APU0000703111", "White bread, per pound",                    "USD/lb"),
-    ("APU0000703212", "Bread, wheat, per pound",                   "USD/lb"),
-    ("APU0000701111", "Flour, white, all purpose, per lb",         "USD/lb"),
-    ("APU0000703311", "Rice, white, long grain, uncooked, per lb", "USD/lb"),
-    ("APU0000704111", "Spaghetti and macaroni, per lb",            "USD/lb"),
-    ("APU0000705111", "Peanut butter, creamy, per 18 oz",          "USD/18oz"),
+    ("APU0000702111", "Bread, white, pan, per lb",                   "USD/lb",          "food"),
+    ("APU0000702212", "Bread, whole wheat, pan, per lb",             "USD/lb",          "food"),
+    ("APU0000701111", "Flour, white, all purpose, per lb",           "USD/lb",          "food"),
+    ("APU0000701312", "Rice, white, long grain, uncooked, per lb",   "USD/lb",          "food"),
+    ("APU0000701322", "Spaghetti and macaroni, per lb",              "USD/lb",          "food"),
+    ("APU0000716141", "Peanut butter, creamy, per lb",               "USD/lb",          "food"),
     # ── Produce ────────────────────────────────────────────────────────────
-    ("APU0000711411", "Avocados, all types, per lb",               "USD/lb"),
-    ("APU0000710111", "Potatoes, white, per lb",                   "USD/lb"),
-    ("APU0000710211", "Lettuce, iceberg, per lb",                  "USD/lb"),
-    ("APU0000711111", "Tomatoes, field grown, per lb",             "USD/lb"),
-    ("APU0000711211", "Tomatoes, grape, per pint",                 "USD/pint"),
-    ("APU0000712111", "Broccoli, per lb",                          "USD/lb"),
-    ("APU0000712311", "Cauliflower, per head",                     "USD/head"),
-    ("APU0000712411", "Celery, per lb",                            "USD/lb"),
-    ("APU0000713311", "Green beans, per lb",                       "USD/lb"),
-    ("APU0000714111", "Peppers, sweet, per lb",                    "USD/lb"),
-    ("APU0000715211", "Apples, Red Delicious, per lb",             "USD/lb"),
-    ("APU0000716111", "Bananas, per lb",                           "USD/lb"),
-    ("APU0000717111", "Grapes, per lb",                            "USD/lb"),
-    ("APU0000717311", "Lemons, per lb",                            "USD/lb"),
-    ("APU0000718111", "Oranges, navel, per lb",                    "USD/lb"),
-    ("APU0000719211", "Strawberries, dry pint",                    "USD/pint"),
-    ("APU0000719411", "Watermelon, per lb",                        "USD/lb"),
+    ("APU0000711111", "Apples, Red Delicious, per lb",               "USD/lb",          "food"),
+    ("APU0000711211", "Bananas, per lb",                             "USD/lb",          "food"),
+    ("APU0000711311", "Oranges, Navel, per lb",                      "USD/lb",          "food"),
+    ("APU0000711411", "Grapefruit, per lb",                          "USD/lb",          "food"),
+    ("APU0000711412", "Lemons, per lb",                              "USD/lb",          "food"),
+    ("APU0000711415", "Strawberries, dry pint, per 12 oz",           "USD/12oz",        "food"),
+    ("APU0000712112", "Potatoes, white, per lb",                     "USD/lb",          "food"),
+    ("APU0000712211", "Lettuce, iceberg, per lb",                    "USD/lb",          "food"),
+    ("APU0000FL2101", "Lettuce, romaine, per lb",                    "USD/lb",          "food"),
+    ("APU0000712311", "Tomatoes, field grown, per lb",               "USD/lb",          "food"),
+    ("APU0000712402", "Celery, per lb",                              "USD/lb",          "food"),
+    ("APU0000712403", "Carrots, short trimmed and topped, per lb",   "USD/lb",          "food"),
+    ("APU0000712404", "Onions, dry yellow, per lb",                  "USD/lb",          "food"),
+    ("APU0000712406", "Peppers, sweet, per lb",                      "USD/lb",          "food"),
+    ("APU0000712409", "Cucumbers, per lb",                           "USD/lb",          "food"),
+    ("APU0000712412", "Broccoli, per lb",                            "USD/lb",          "food"),
     # ── Meat, poultry, fish ────────────────────────────────────────────────
-    ("APU0000720311", "Ground beef, 100% beef, per lb",            "USD/lb"),
-    ("APU0000723111", "Bacon, sliced, per lb",                     "USD/lb"),
-    ("APU0000724111", "Ham, rump or shank half, bone-in, per lb",  "USD/lb"),
-    ("APU0000725111", "Chicken breast, boneless, per lb",          "USD/lb"),
-    ("APU0000726111", "Chicken legs, bone-in, per lb",             "USD/lb"),
-    ("APU0000727111", "Turkey, frozen, whole, per lb",             "USD/lb"),
-    ("APU0000721211", "Beef chuck roast, per lb",                  "USD/lb"),
-    ("APU0000721311", "Beef steak, round, per lb",                 "USD/lb"),
+    ("APU0000703112", "Ground beef, 100% beef, per lb",              "USD/lb",          "food"),
+    ("APU0000703211", "Chuck roast, USDA Choice, bone-in, per lb",   "USD/lb",          "food"),
+    ("APU0000703511", "Steak, round, USDA Choice, boneless, per lb", "USD/lb",          "food"),
+    ("APU0000704111", "Bacon, sliced, per lb",                       "USD/lb",          "food"),
+    ("APU0000704311", "Ham, rump or shank half, bone-in, smoked, per lb", "USD/lb",     "food"),
+    ("APU0000706111", "Chicken, fresh, whole, per lb",               "USD/lb",          "food"),
+    ("APU0000706211", "Chicken breast, bone-in, per lb",             "USD/lb",          "food"),
+    ("APU0000FF1101", "Chicken breast, boneless, per lb",            "USD/lb",          "food"),
+    ("APU0000706212", "Chicken legs, bone-in, per lb",               "USD/lb",          "food"),
+    ("APU0000706311", "Turkey, frozen, whole, per lb",               "USD/lb",          "food"),
+    ("APU0000707111", "Tuna, light, chunk, per lb",                  "USD/lb",          "food"),
     # ── Beverages & condiments ─────────────────────────────────────────────
-    ("APU0000732111", "Coffee, 100% ground roast, per lb",         "USD/lb"),
-    ("APU0000733111", "Coffee, instant, plain, per 3 oz",          "USD/3oz"),
-    ("APU0000734111", "Tea, black, per 16 bags",                   "USD/16-bag"),
-    ("APU0000735111", "Cola, nondiet, per 2-liter",                "USD/2L"),
-    ("APU0000736211", "Soda, other, per 2-liter",                  "USD/2L"),
-    ("APU0000737111", "Milk, nonfat, per gallon",                  "USD/gallon"),
-    ("APU0000738111", "Sugar, white, per lb",                      "USD/lb"),
-    ("APU0000741211", "Salt, per 26 oz",                           "USD/26oz"),
+    ("APU0000717311", "Coffee, 100% ground roast, all sizes, per lb", "USD/lb",         "food"),
+    ("APU0000717324", "Coffee, instant, plain, regular, per 16 oz", "USD/16oz",         "food"),
+    ("APU0000717114", "Cola, nondiet, per 2-liter",                  "USD/2L",          "food"),
+    ("APU0000715211", "Sugar, white, all sizes, per lb",             "USD/lb",          "food"),
     # ── Energy (consumer-facing) ───────────────────────────────────────────
-    ("APU0000726101", "Gasoline, all types, per gallon",           "USD/gallon"),
-    ("APU0000726201", "Gasoline, regular unleaded, per gallon",    "USD/gallon"),
-    ("APU0000726301", "Gasoline, midgrade, per gallon",            "USD/gallon"),
-    ("APU0000726401", "Gasoline, premium, per gallon",             "USD/gallon"),
-    ("APU0000727161", "Diesel fuel, per gallon",                   "USD/gallon"),
-    ("APU0000745121", "Electricity, per KWH",                      "USD/KWH"),
-    ("APU0000745141", "Utility (piped) gas, per therm",            "USD/therm"),
-    ("APU0000747131", "Fuel oil #2, per gallon",                   "USD/gallon"),
+    ("APU000074714",  "Gasoline, unleaded regular, per gallon",      "USD/gallon",      "gasoline"),
+    ("APU000074715",  "Gasoline, unleaded midgrade, per gallon",     "USD/gallon",      "gasoline"),
+    ("APU000074716",  "Gasoline, unleaded premium, per gallon",      "USD/gallon",      "gasoline"),
+    ("APU00007471A",  "Gasoline, all types, per gallon",             "USD/gallon",      "gasoline"),
+    ("APU000074717",  "Automotive diesel fuel, per gallon",          "USD/gallon",      "gasoline"),
+    ("APU000072610",  "Electricity, per KWH",                        "USD/KWH",         "household_fuels"),
+    ("APU000072620",  "Utility (piped) gas, per therm",              "USD/therm",       "household_fuels"),
+    ("APU000072511",  "Fuel oil #2, per gallon",                     "USD/gallon",      "household_fuels"),
 ]
 
 
@@ -148,7 +170,7 @@ def fetch_batch(series_ids, start_year, end_year):
 
 def parse_series(raw_series):
     """Convert BLS API response to a long-format DataFrame of retail prices."""
-    meta = {sid: (item, unit) for sid, item, unit in AVG_PRICE_SERIES}
+    meta = {sid: (item, unit) for sid, item, unit, _ in AVG_PRICE_SERIES}
     rows = []
     for s in raw_series:
         sid = s.get("seriesID", "")
@@ -168,6 +190,57 @@ def parse_series(raw_series):
                 continue
             month = int(period[1:])
             if month > 12:
+                continue
+            rows.append({
+                "series_id": sid,
+                "item":      item,
+                "unit":      unit,
+                "date":      f"{year}-{month:02d}-01",
+                "price":     price,
+            })
+    return pd.DataFrame(rows)
+
+
+def fetch_avg_prices_flatfile():
+    """Pull all of AVG_PRICE_SERIES from BLS's keyless bulk flat files instead
+    of the quota-limited timeseries API. Downloads each distinct flat file
+    (food / gasoline / household_fuels) once. Returns a DataFrame matching
+    parse_series()'s schema, or an empty DataFrame on total failure."""
+    meta = {sid: (item, unit, ffkey) for sid, item, unit, ffkey in AVG_PRICE_SERIES}
+    wanted_by_file = {}
+    for sid, (item, unit, ffkey) in meta.items():
+        wanted_by_file.setdefault(ffkey, set()).add(sid)
+
+    rows = []
+    for ffkey, wanted in wanted_by_file.items():
+        url = AP_FLATFILE_URLS[ffkey]
+        try:
+            resp = requests.get(url, headers=AP_FLATFILE_HEADERS, timeout=60)
+            resp.raise_for_status()
+        except requests.RequestException as exc:
+            print(f"  Flat-file fetch failed ({ffkey}): {exc}")
+            continue
+
+        for line in resp.text.splitlines()[1:]:
+            parts = line.split("\t")
+            if len(parts) < 4:
+                continue
+            sid = parts[0].strip()
+            if sid not in wanted:
+                continue
+            item, unit, _ = meta[sid]
+            year_str = parts[1].strip()
+            period = parts[2].strip()
+            value_str = parts[3].strip()
+            if not period.startswith("M"):
+                continue
+            month = int(period[1:])
+            if month > 12:
+                continue  # M13 = annual average -- skip
+            try:
+                price = float(value_str)
+                year = int(year_str)
+            except ValueError:
                 continue
             rows.append({
                 "series_id": sid,
@@ -202,15 +275,21 @@ def main():
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     all_frames = []
-    for y_start, y_end in year_chunks:
-        for batch_start in range(0, len(AVG_PRICE_SERIES), BATCH_SIZE):
-            batch = [sid for sid, _, _ in AVG_PRICE_SERIES[batch_start:batch_start + BATCH_SIZE]]
-            raw = fetch_batch(batch, y_start, y_end)
-            if raw:
-                df = parse_series(raw)
-                if not df.empty:
-                    all_frames.append(df)
-            time.sleep(REQUEST_INTERVAL)
+
+    flat_df = fetch_avg_prices_flatfile()
+    if not flat_df.empty:
+        all_frames.append(flat_df)
+    else:
+        print("  Flat files returned nothing -- falling back to timeseries API.")
+        for y_start, y_end in year_chunks:
+            for batch_start in range(0, len(AVG_PRICE_SERIES), BATCH_SIZE):
+                batch = [sid for sid, _, _, _ in AVG_PRICE_SERIES[batch_start:batch_start + BATCH_SIZE]]
+                raw = fetch_batch(batch, y_start, y_end)
+                if raw:
+                    df = parse_series(raw)
+                    if not df.empty:
+                        all_frames.append(df)
+                time.sleep(REQUEST_INTERVAL)
 
     if not all_frames:
         print("  No data returned. Check BLS_API_KEY / series IDs.")
