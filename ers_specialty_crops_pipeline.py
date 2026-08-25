@@ -106,7 +106,7 @@ def _parse_price_index(url: str, source_label: str) -> pd.DataFrame:
     )
 
     # Parse dates
-    melted["date"] = pd.to_datetime(melted["date_str"], errors="coerce")
+    melted["date"] = pd.to_datetime(melted["date_str"], format="%b %Y", errors="coerce")
     melted = melted.dropna(subset=["date", "value"])
 
     # Numeric value
@@ -144,7 +144,7 @@ def _parse_trade(url: str, source_label: str) -> pd.DataFrame:
             break
 
     if date_col:
-        raw["date"] = pd.to_datetime(raw[date_col], errors="coerce")
+        raw["date"] = pd.to_datetime(raw[date_col], format="%b %Y", errors="coerce")
         raw = raw.dropna(subset=["date"])
 
     raw["source"] = source_label
