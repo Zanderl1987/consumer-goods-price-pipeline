@@ -118,6 +118,13 @@ KEYS: dict[str, list[str]] = {
     "fred_consumer_prices":   ["series_id", "date"],
     "fred_used_cars":         ["series_id", "date"],
     "fred_cpi":               ["series_id", "date"],
+    # USDA ERS specialty crops
+    "ers_fruit_nut_prices":  ["series_id", "date"],
+    "ers_veg_prices":        ["series_id", "date"],
+    "ers_fruit_nut_trade":   ["series_id", "date"],
+    "ers_veg_trade":         ["series_id", "date"],
+    # FEWS NET market prices
+    "fews_net_food_prices":  ["market", "cpcv2_code", "market_price_factor", "period_date"],
 }
 
 

@@ -42,6 +42,11 @@ EXPECTED_TABLES = [
     "fred_used_cars",
     "fred_cpi",
     "apininja_inflation",
+    "ers_fruit_nut_prices",
+    "ers_veg_prices",
+    "ers_fruit_nut_trade",
+    "ers_veg_trade",
+    "fews_net_food_prices",
 ]
 
 

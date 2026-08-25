@@ -96,7 +96,13 @@ CATALOG: dict[str, str] = {
     "fred_used_cars":           _glob("fred/used_cars/**/*.parquet"),
     "fred_cpi":                 _glob("fred/cpi/**/*.parquet"),
     "apininja_inflation":       _glob("apininja/inflation/**/*.parquet"),
-    
+    # ── USDA ERS specialty crops (fruit/nuts + vegetables/pulses) ──────────
+    "ers_fruit_nut_prices":    _glob("ers/ers_fruit_nut_prices/**/*.parquet"),
+    "ers_veg_prices":          _glob("ers/ers_veg_prices/**/*.parquet"),
+    "ers_fruit_nut_trade":     _glob("ers/ers_fruit_nut_trade/**/*.parquet"),
+    "ers_veg_trade":           _glob("ers/ers_veg_trade/**/*.parquet"),
+    # ── FEWS NET food-insecure market prices ──────────────────────────────
+    "fews_net_food_prices":    _glob("fews_net/**/*.parquet"),
 }
 
 
