@@ -178,6 +178,24 @@ PIPELINES: list[PipelineSpec] = [
         timeout=1800,
     ),
     PipelineSpec(
+        name="ers_specialty_crops",
+        file="ers_specialty_crops_pipeline.py",
+        desc="USDA ERS specialty crops - CPI/PPI indexes + average retail prices, fruit/nuts + vegetables/pulses (keyless)",
+        stage=1,
+        tables=["ers_fruit_nut_prices", "ers_veg_prices", "ers_fruit_nut_trade", "ers_veg_trade"],
+        backfill_args=["--backfill"],
+        timeout=1800,
+    ),
+    PipelineSpec(
+        name="fews_net_food_prices",
+        file="fews_net_pipeline.py",
+        desc="FEWS NET Data Warehouse market prices - ~20 countries, per-market retail (keyless)",
+        stage=1,
+        tables=["fews_net_food_prices"],
+        backfill_args=["--backfill"],
+        timeout=1800,
+    ),
+    PipelineSpec(
         name="kroger",
         file="kroger_pipeline.py",
         desc="Kroger grocery catalog prices, ZIP-localized (5 tracked regions)",
@@ -186,6 +204,17 @@ PIPELINES: list[PipelineSpec] = [
         requires_env=["KROGER_CLIENT_ID", "KROGER_CLIENT_SECRET"],
         backfill_args=["--backfill"],
         timeout=900,
+    ),
+    PipelineSpec(
+        name="kroger_catalog",
+        file="kroger_catalog_pipeline.py",
+        desc="Kroger broad-term paginated sweep per store with channel flags "
+             "(no-filter listing and fulfillment pricing unsupported on Certification)",
+        stage=2,
+        tables=["kroger_catalog"],
+        requires_env=["KROGER_CLIENT_ID", "KROGER_CLIENT_SECRET"],
+        backfill_args=["--backfill"],
+        timeout=3600,
     ),
     PipelineSpec(
         name="eurostat_hicp",

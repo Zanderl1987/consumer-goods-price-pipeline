@@ -26,6 +26,8 @@ free API key.
 | `imf_commodities_pipeline.py` | `imf_commodities` | IMF PCPS — ~40 tracked commodity benchmark prices (index + USD unit-price), monthly since the 1980s-90s | keyless |
 | `cms_drug_pricing_pipeline.py` | `cms_drug_pricing` | CMS Medicare Part D spending by drug, brand/generic/manufacturer x year. Program reimbursement, not retail cash price | keyless |
 | `noaa_seafood_landings_pipeline.py` | `noaa_seafood_landings` | NOAA FOSS commercial landings — ex-vessel (dockside) seafood prices, per species/state/region/year, 1950-present. `price_per_lb` derived from dollars/pounds; no direct price field. Old NEFSC market-news page is dead, replaced by the live `apps-st.fisheries.noaa.gov/ods/foss` REST API (found live 2026-08-14) | keyless |
+| `ers_specialty_crops_pipeline.py` | `ers_fruit_nut_prices`, `ers_veg_prices`, `ers_fruit_nut_trade` (--with-trade), `ers_veg_trade` (--with-trade) | USDA ERS specialty crops - monthly CPI/PPI price indexes + average retail prices (grapes, oranges, avocados, potatoes ...), optional import/export trade CSVs behind --with-trade. Both price URLs served byte-identical files live 2026-08-24 - see pipeline docstring anomaly note | keyless |
+| `fews_net_pipeline.py` | `fews_net_food_prices` | FEWS NET Data Warehouse market prices - ~20 food-security countries, per-market retail/wholesale. Default fetch window 10y, --backfill for full history. API flaky during 2026-08-24 probing (502/timeouts) but keyless and verified earlier the same day | keyless |
 
 ## Stage 2 — retail / e-commerce / crowdsourced
 
@@ -33,6 +35,7 @@ free API key.
 |---|---|---|---|
 | `openfoodfacts_pipeline.py` | `openfoodfacts_prices` | Open Prices — real barcode/category price observations from receipts + price tags, via the Hugging Face Parquet snapshot (re-pointed 2026-08-04; the old version scraped the sparse main product DB) | keyless |
 | `kroger_pipeline.py` | `kroger_products` | Kroger grocery catalog prices, ZIP-localized to 5 tracked regions (price only returns with a store-scoped `filter.locationId`). Certification-environment app — authenticates at `api-ce.kroger.com`, not `api.kroger.com` | `KROGER_CLIENT_ID`/`SECRET` |
+| `kroger_catalog_pipeline.py` | `kroger_catalog` | Kroger broad-term paginated sweep per store (~46 terms walked via `filter.start` to exhaustion) with channel availability flags. Verified live 2026-08-25: term-less listing rejected (PRODUCT-2016) and fulfillment pricing unsupported on Certification, so coverage is term-bounded and channels are booleans only; dead/test locationIds probed and skipped at run time | `KROGER_CLIENT_ID`/`SECRET` |
 | `bestbuy_products_pipeline.py` | `bestbuy_products` | Best Buy electronics/appliance prices incl. sale/clearance, ~15 tracked search terms | `BESTBUY_API_KEY` |
 
 ## Stage 3 — planned

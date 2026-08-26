@@ -87,6 +87,15 @@ KEYS: dict[str, list[str]] = {
     # value. species+state+region+year+source still collided on these rows;
     # no field anywhere distinguishes them. Full-row dedup only removes
     # exact re-fetched duplicates, which is correct here.
+    # ERS specialty crops — one value per BLS series per month (series_id is
+    # the APU/CU/WPU identifier and already encodes series_type)
+    "ers_fruit_nut_prices":   ["series_id", "date"],
+    "ers_veg_prices":         ["series_id", "date"],
+    # ERS trade — one flow amount per partner/commodity/detail/unit/month
+    "ers_fruit_nut_trade":    ["trade_flow", "partner_country", "commodity", "commodity_detail",
+                               "unit_type", "date"],
+    "ers_veg_trade":          ["trade_flow", "partner_country", "commodity", "commodity_detail",
+                               "unit_type", "date"],
     # EIA energy — one price per area/product/date
     "eia_gas_retail":         ["duoarea", "product", "date"],
     "eia_gas_spot":           ["series", "date"],
@@ -94,6 +103,7 @@ KEYS: dict[str, list[str]] = {
     "eia_natgas_price":       ["series_id", "date"],
     # Retail / e-commerce — one price observation per product per snapshot
     "kroger_products":        ["upc", "store_id", "fetched_at"],
+    "kroger_catalog":         ["upc", "store_id"],
     "bestbuy_products":       ["sku", "fetched_at"],
     "walmart_products":       ["product_id", "fetched_at"],
     "ebay_listings":          ["item_id", "fetched_at"],
@@ -108,6 +118,10 @@ KEYS: dict[str, list[str]] = {
     "oecd_cpi":               ["series_id", "date"],
     "statcan_retail_prices":  ["item", "city", "date"],
     "wfp_food_prices":        ["market_id", "commodity_id", "date", "pricetype"],
+    # FEWS NET — one observation per market/product/price-type/period; cpcv2
+    # is the commodity code, product its name (kept out of the key so a
+    # rename doesn't fork history).
+    "fews_net_food_prices":   ["market", "cpcv2", "price_type", "period_date"],
     # FAO CP/PP domains are per-country (area); corrected from the
     # originally-reserved item-only key after live verification 2026-08-04.
     "fao_food_prices":        ["area", "item", "date"],

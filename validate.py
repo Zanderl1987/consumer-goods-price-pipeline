@@ -141,6 +141,30 @@ SCHEMAS: dict[str, dict] = {
         "date_col":    "date",
         "value_ranges": {"price_per_lb": (0, 5000)},
     },
+    "ers_fruit_nut_prices": {
+        "required":    ["commodity", "series_id", "series_type", "date", "value"],
+        "critical_nn": ["series_id", "commodity", "date", "value"],
+        "date_col":    "date",
+        "value_ranges": {"value": (0, 100000)},
+    },
+    "ers_veg_prices": {
+        "required":    ["commodity", "series_id", "series_type", "date", "value"],
+        "critical_nn": ["series_id", "commodity", "date", "value"],
+        "date_col":    "date",
+        "value_ranges": {"value": (0, 100000)},
+    },
+    "ers_fruit_nut_trade": {
+        "required":    ["trade_flow", "partner_country", "commodity", "date", "amount"],
+        "critical_nn": ["trade_flow", "commodity", "date", "amount"],
+        "date_col":    "date",
+        "value_ranges": {"amount": (0, 10000000)},
+    },
+    "ers_veg_trade": {
+        "required":    ["trade_flow", "partner_country", "commodity", "date", "amount"],
+        "critical_nn": ["trade_flow", "commodity", "date", "amount"],
+        "date_col":    "date",
+        "value_ranges": {"amount": (0, 10000000)},
+    },
     "eia_gas_retail": {
         "required":    ["duoarea", "product", "date", "price_usd_gallon"],
         "critical_nn": ["duoarea", "product", "date", "price_usd_gallon"],
@@ -168,6 +192,11 @@ SCHEMAS: dict[str, dict] = {
     "kroger_products": {
         "required":    ["upc", "product_name", "price", "fetched_at"],
         "critical_nn": ["upc", "product_name", "price"],
+        "value_ranges": {"price": (0, 100000)},
+    },
+    "kroger_catalog": {
+        "required":    ["upc", "product_name", "store_id", "price", "fetched_at"],
+        "critical_nn": ["upc", "product_name", "store_id", "price"],
         "value_ranges": {"price": (0, 100000)},
     },
     "bestbuy_products": {
@@ -222,6 +251,12 @@ SCHEMAS: dict[str, dict] = {
         "critical_nn": ["countryiso3", "commodity", "date", "price"],
         "date_col":    "date",
         "value_ranges": {"usdprice": (0, 100000)},
+    },
+    "fews_net_food_prices": {
+        "required":    ["period_date", "country", "market", "product", "price_type", "value"],
+        "critical_nn": ["market", "product", "period_date", "value"],
+        "date_col":    "period_date",
+        "value_ranges": {"value": (0, 10000000)},
     },
     "fao_food_prices": {
         "required":    ["area", "item", "date", "value"],

@@ -43,10 +43,11 @@ feeds tell you what individual items cost. Two registered tables (`kroger_produc
 
 ## What's in here
 
-- **26 registered tables** in the query layer CATALOG across US government
+- **35 registered tables** in the query layer CATALOG across US government
   statistics (BLS CPI/PPI and average prices, USDA AMS wholesale/retail and
   NASS farm prices, EIA energy, FRED consumer series), crowdsourced grocery
-  (Open Food Facts), and a planned retail/e-commerce tier (Kroger, Walmart,
+  (Open Food Facts), USDA ERS specialty crops, FEWS NET market prices, and a
+  planned retail/e-commerce tier (Kroger, Walmart,
   eBay) plus international stats (Eurostat, OECD, StatCan, FAO, World Bank,
   IMF).
 - **Keyless-or-free-key design**: pipelines run keyless where the source
