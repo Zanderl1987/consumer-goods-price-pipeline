@@ -17,15 +17,15 @@ size_categories:
 # Consumer Goods Price Pipeline — Full Curated Snapshot
 
 A dataset of consumer-facing retail prices, government price indexes, and commodity
-prices covering **26 tables** and **1,672,293 rows**.
+prices covering **29 tables** and **1,688,630 rows**.
 
 ## Data Sources
 
 | Category | Tables | Key Sources |
 |---|---|---|
-| Retail Prices | 6 | Kroger, Open Food Facts, USDA AMS, Statistics Canada, CMS drug pricing |
+| Retail Prices | 7 | Kroger, Open Food Facts, USDA AMS, Statistics Canada, CMS drug pricing |
 | Government Price Indexes | 7 | BLS CPI/PPI/Average Price, FRED, Eurostat HICP, OECD CPI |
-| Commodity Prices | 9 | FAO, World Bank Pink Sheet, IMF, WFP, USDA prices paid/received |
+| Commodity Prices | 11 | FAO, World Bank Pink Sheet, IMF, WFP, USDA prices paid/received |
 | Energy Prices | 4 | EIA electricity/gas/natural gas |
 
 ## Usage
@@ -72,11 +72,11 @@ Full source, tests, and architecture docs: https://github.com/Zanderl1987/consum
 
 ## Build Info
 
-- **Generated**: 2026-08-24
+- **Generated**: 2026-08-26
 - **Pipeline**: consumer-goods-price-pipeline (https://github.com/Zanderl1987/consumer-goods-price-pipeline)
-- **Tables**: 26
-- **Total Rows**: 1,672,293
-- **Total Size**: 18.3 MB
+- **Tables**: 29
+- **Total Rows**: 1,688,630
+- **Total Size**: 18.8 MB
 
 ## License
 
