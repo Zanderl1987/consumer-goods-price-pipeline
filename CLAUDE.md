@@ -99,8 +99,10 @@ enforce this):
   terminates the docstring early (broke `query.py` on 2026-08-03; fixed by
   rewriting the SQL example with string concatenation).
 - `validate.py` defaults `value_ranges` to a WARNING so new tables don't fail
-  the run while you're still calibrating ranges — move to ERROR only when the
-  range is proven stable.
+  the run while you're still calibrating ranges — set `value_ranges_error: True`
+  in the table's SCHEMAS entry only when the range is proven over the historical
+  spread (fews_net_food_prices does this: full 1995+ backfill max is 168M, bound
+  (0, 500M)).
 - USDA AMS (`usda_ams_pipeline.py`): base URL was updated to MARS v1.2
   (`https://marsapi.ams.usda.gov/services/v1.2`, HTTP Basic auth, 180-day
   request windows) after live verification on 2026-08-03. The FVWV wholesale

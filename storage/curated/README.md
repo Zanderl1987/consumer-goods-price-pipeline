@@ -17,7 +17,7 @@ size_categories:
 # Consumer Goods Price Pipeline — Full Curated Snapshot
 
 A dataset of consumer-facing retail prices, government price indexes, and commodity
-prices covering **29 tables** and **1,738,623 rows**.
+prices covering **30 tables** and **2,963,076 rows**.
 
 ## Data Sources
 
@@ -25,7 +25,14 @@ prices covering **29 tables** and **1,738,623 rows**.
 |---|---|---|
 | Retail Prices | 7 | Kroger, Open Food Facts, USDA AMS, Statistics Canada, CMS drug pricing |
 | Government Price Indexes | 7 | BLS CPI/PPI/Average Price, FRED, Eurostat HICP, OECD CPI |
-| Commodity Prices | 11 | FAO, World Bank Pink Sheet, IMF, WFP, USDA prices paid/received |
+| Commodity Prices | 12 | FAO, World Bank Pink Sheet, IMF, WFP, USDA prices paid/received, FEWS NET |
+
+## Attribution
+
+FEWS NET market-price data is used under the FEWS NET Data and Information Use and
+Attribution Policy (https://help.fews.net/fdp/data-and-information-use-and-attribution-policy).
+FEWS NET data prepared by the Famine Early Warning Systems Network (USAID); the
+FEWS NET Data Warehouse generously exposes its export endpoint for this use.
 | Energy Prices | 4 | EIA electricity/gas/natural gas |
 
 ## Usage
@@ -74,9 +81,9 @@ Full source, tests, and architecture docs: https://github.com/Zanderl1987/consum
 
 - **Generated**: 2026-09-05
 - **Pipeline**: consumer-goods-price-pipeline (https://github.com/Zanderl1987/consumer-goods-price-pipeline)
-- **Tables**: 29
-- **Total Rows**: 1,738,623
-- **Total Size**: 18.8 MB
+- **Tables**: 30
+- **Total Rows**: 2,963,076
+- **Total Size**: 59.5 MB
 
 ## License
 

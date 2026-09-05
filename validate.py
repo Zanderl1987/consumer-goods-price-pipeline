@@ -95,6 +95,9 @@ class ValidationResult:
 # critical_nn   — subset that MUST NOT be >50% null            → ERROR if mostly null
 # date_col      — column for future-date check (None = skip)
 # value_ranges  — {col: (lo, hi)}                              → WARN if violated
+# value_ranges_error — True promotes that table's range check to ERROR.
+#                      Use once the historical spread is proven (e.g. fews has
+#                      the full 1995+ backfill), so a future explosion fails.
 
 SCHEMAS: dict[str, dict] = {
     "bls_cpi": {
@@ -256,7 +259,8 @@ SCHEMAS: dict[str, dict] = {
         "required":    ["period_date", "country", "market", "product", "price_type", "value"],
         "critical_nn": ["market", "product", "period_date", "value"],
         "date_col":    "period_date",
-        "value_ranges": {"value": (0, 10000000)},
+        "value_ranges": {"value": (0, 500000000)},
+        "value_ranges_error": True,
     },
     "fao_food_prices": {
         "required":    ["area", "item", "date", "value"],
@@ -360,6 +364,7 @@ def _check_future_dates(df: pd.DataFrame, schema: dict) -> CheckResult:
 
 def _check_value_ranges(df: pd.DataFrame, schema: dict) -> list:
     results = []
+    severity = Severity.ERROR if schema.get("value_ranges_error") else Severity.WARNING
     for col, (lo, hi) in schema.get("value_ranges", {}).items():
         if col not in df.columns:
             continue
@@ -367,7 +372,7 @@ def _check_value_ranges(df: pd.DataFrame, schema: dict) -> list:
         out_of_range = int(((numeric < lo) | (numeric > hi)).sum())
         if out_of_range > 0:
             results.append(CheckResult(
-                f"range:{col}", Severity.WARNING,
+                f"range:{col}", severity,
                 f"{out_of_range} values outside [{lo}, {hi}]"
             ))
         else:

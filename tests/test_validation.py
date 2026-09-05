@@ -57,6 +57,17 @@ class TestValidateDf:
         assert any(c.name.startswith("range:") and c.severity == Severity.WARNING
                    for c in result.checks)
 
+    def test_value_range_errors_when_flagged(self):
+        df = pd.DataFrame({
+            "period_date": ["2026-01-01"], "country": ["SS"], "market": ["Juba"],
+            "product": ["Millet"], "price_type": ["Retail"], "value": [999999999.0],
+            "fetched_at": ["2026-01-02T00:00:00"],
+        })
+        result = validate_df("fews_net_food_prices", df)
+        assert not result.passed
+        assert any(c.name == "range:value" and c.severity == Severity.ERROR
+                   for c in result.errors)
+
     def test_unknown_table_warns_not_errors(self):
         df = pd.DataFrame({"a": [1]})
         result = validate_df("no_such_table", df)
