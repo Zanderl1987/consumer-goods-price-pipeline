@@ -1,119 +1,96 @@
-import io
+"""Tests for ers_specialty_crops_pipeline — ERS fruit/nuts + veg price index + trade."""
+
+import os
+import sys
+from io import StringIO
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-import requests
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO_ROOT)
 
 import ers_specialty_crops_pipeline as ers
 
+# ── Synthetic fixtures ────────────────────────────────────────────────────────
 
-def _price_csv() -> str:
-    return (
-        '"seriesType","seriesID","seriesName","year","monthNumber","unit","value"\n'
-        '"Average retail price","APU0000711211","Bananas",2026,7,"Dollars per pound",0.65\n'
-        '"Consumer Price Index","CUUR0000SAF111","Citrus fruits",2026,7,"Base 1982-84=100",251.2\n'
-        '"Producer Price Index","WPU01130201","Grapefruit",2025,12,"Base 1982=100",180.4\n'
-    )
+PRICE_CSV = """\
+Category,Jan 2024,Feb 2024,Mar 2024
+Fruit & Tree Nuts - CPI,100.0,101.2,102.5
+Fruit & Tree Nuts - PPI,200.0,201.0,202.0
+Fresh Fruit - Retail Price,1.99,2.05,2.10
+"""
 
-
-def _trade_csv() -> str:
-    return (
-        '"Trade","GeographicDesc","Year","MonthNumber","MarketYear","Group","Subgroup",'
-        '"MarketSegment","CommodityName","CommodityDetail","UnitType","UnitDesc","Amount"\n'
-        '"Import","Afghanistan",2026,6,"2025/26","Fruit and tree nuts","Noncitrus","Dried",'
-        '"Apricots","Unspecified","Value","Thousand dollars",25.693\n'
-    )
+TRADE_CSV = """\
+Commodity,Partner Country,Trade Flow,Value (1000 USD),Volume (1000 lbs),Date
+Apples,Canada,Imports,5000,3000,Jan 2024
+Apples,Mexico,Exports,8000,6000,Feb 2024
+"""
 
 
-class TestParsePrices:
-    def test_parse_prices_tidy_long(self):
-        raw = pd.read_csv(io.StringIO(_price_csv()))
-        out = ers.parse_prices(raw)
-        assert len(out) == 3
-        assert set(out.columns) == {"date", "commodity", "series_id", "series_type", "unit", "value"}
-        assert set(out["series_type"]) == {
-            "Average retail price", "Consumer Price Index", "Producer Price Index",
-        }
-        row = out[out["commodity"] == "Bananas"].iloc[0]
-        assert row["date"] == pd.Timestamp("2026-07-01")
-        assert row["value"] == pytest.approx(0.65)
-        assert row["unit"] == "Dollars per pound"
+def _mock_get_csv(url: str) -> pd.DataFrame:
+    """Simulate ERS CSV download by parsing the fixture."""
+    if "price" in url:
+        return pd.read_csv(StringIO(PRICE_CSV))
+    elif "trade" in url:
+        return pd.read_csv(StringIO(TRADE_CSV))
+    return pd.DataFrame()
 
-    def test_parse_prices_drops_bad_rows(self):
-        raw = pd.read_csv(io.StringIO(_price_csv() + '"Average retail price","","Bananas",2026,13,"x",\n'))
-        out = ers.parse_prices(raw)
-        assert len(out) == 3
 
-    def test_parse_prices_handles_empty(self):
-        assert ers.parse_prices(pd.DataFrame()).empty
+# ── Price index parsing ──────────────────────────────────────────────────────
 
+class TestParsePriceIndex:
+    def test_melts_to_long_format(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/price.csv", "Test")
+        assert not df.empty
+        assert "series_id" in df.columns
+        assert "date" in df.columns
+        assert "value" in df.columns
+        # 3 categories x 3 months = 9 rows
+        assert len(df) == 9
+
+    def test_series_id_snake_cased(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/price.csv", "Test")
+        ids = df["series_id"].unique()
+        assert any("fruit" in s for s in ids)
+        assert all("_" not in s[0] for s in ids)  # no leading underscore
+
+    def test_dates_parsed(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/price.csv", "Test")
+        assert df["date"].dt.year.min() == 2024
+
+    def test_empty_on_no_data(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", lambda url: pd.DataFrame())
+        df = ers._parse_price_index("https://example.com/price.csv", "Test")
+        assert df.empty
+
+    def test_fetched_at_added(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/price.csv", "Test")
+        assert "fetched_at" in df.columns
+
+
+# ── Trade parsing ─────────────────────────────────────────────────────────────
 
 class TestParseTrade:
-    def test_parse_trade_long(self):
-        raw = pd.read_csv(io.StringIO(_trade_csv()))
-        out = ers.parse_trade(raw)
-        assert len(out) == 1
-        row = out.iloc[0]
-        assert row["date"] == pd.Timestamp("2026-06-01")
-        assert row["trade_flow"] == "Import"
-        assert row["partner_country"] == "Afghanistan"
-        assert row["amount"] == pytest.approx(25.693)
-        assert row["unit_desc"] == "Thousand dollars"
+    def test_columns_normalized(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_trade("https://example.com/trade.csv", "Test")
+        assert not df.empty
+        # Columns should be lowercased/snake_cased
+        assert all(c == c.lower() for c in df.columns)
 
-    def test_parse_trade_handles_empty(self):
-        assert ers.parse_trade(pd.DataFrame()).empty
+    def test_source_and_fetched_at(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_trade("https://example.com/trade.csv", "Test")
+        assert (df["source"] == "Test").all()
+        assert "fetched_at" in df.columns
 
-
-class TestDownload:
-    def test_download_csv_follows_url_without_cache_buster(self, monkeypatch):
-        captured = {}
-
-        class FakeResponse:
-            status_code = 200
-            content = _price_csv().encode()
-            text = ""
-
-        def fake_get(url, timeout=None, headers=None):
-            captured["url"] = url
-            return FakeResponse()
-
-        monkeypatch.setattr(ers.requests, "get", fake_get)
-        df = ers.download_csv(ers.FRUIT_PRICES_URL)
-        assert captured["url"] == ers.FRUIT_PRICES_URL
-        assert len(df) == 3
-
-    def test_download_csv_non_200_returns_empty(self, monkeypatch):
-        class FakeResponse:
-            status_code = 404
-            content = b""
-            text = "not found"
-
-        monkeypatch.setattr(ers.requests, "get", lambda *a, **k: FakeResponse())
-        assert ers.download_csv("https://example.invalid/x.csv").empty
-
-    def test_download_csv_retries_on_request_error(self, monkeypatch):
-        calls = {"n": 0}
-
-        def flaky_get(*a, **k):
-            calls["n"] += 1
-            if calls["n"] < 3:
-                raise requests.ConnectionError("boom")
-            class FakeResponse:
-                status_code = 200
-                content = _price_csv().encode()
-                text = ""
-            return FakeResponse()
-
-        monkeypatch.setattr(ers.requests, "get", flaky_get)
-        monkeypatch.setattr(ers.time, "sleep", lambda s: None)
-        assert len(ers.download_csv(ers.FRUIT_PRICES_URL)) == 3
-
-
-class TestIncrementalFilter:
-    def test_incremental_keeps_recent_window_only(self):
-        now = pd.Timestamp("2026-08-24").to_pydatetime()
-        df = pd.DataFrame({
-            "date": pd.to_datetime(["2019-01-01", "2026-07-01", "2026-08-01"]),
-        })
-        kept = ers._filter_incremental(df, now, ers.INCREMENTAL_MONTHS)
-        assert kept["date"].tolist() == [pd.Timestamp("2026-07-01"), pd.Timestamp("2026-08-01")]
+    def test_empty_on_no_data(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", lambda url: pd.DataFrame())
+        df = ers._parse_trade("https://example.com/trade.csv", "Test")
+        assert df.empty

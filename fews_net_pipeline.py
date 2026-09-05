@@ -1,146 +1,170 @@
 #!/usr/bin/env python3
 """
-FEWS NET Food Prices Pipeline - market price observations from the FEWS NET
-Data Warehouse (FDW), covering ~20 food-insecurity-monitored countries
-(Ethiopia, Sudan, Yemen, Afghanistan ...) back to the 1990s-2000s.
+FEWS NET Data Warehouse Market Prices Pipeline.
 
-Access is keyless via the FDW REST API. Verified live 2026-08-24:
-  Root      : GET https://fdw.fews.net/api/ -> resource list incl.
-              "marketpricefacts": "https://fdw.fews.net/api/marketpricefacts/"
-  Data      : GET https://fdw.fews.net/api/marketpricefacts.csv?fields=simple
-              wide CSV with columns incl. geographic_group,fewsnet_region,
-              country,admin_1,admin_2,market,cpcv2,product,price_type,
-              product_source,collection_schedule,start_date,period_date,value,
-              currency,unit,...,latitude,longitude,is_staple_food
-  CAVEAT (2026-08-24): during probing the API returned 502 Bad Gateway or
-  read-timeouts for EVERY query shape (json/csv, limit<=5, date-filtered),
-  after an initial verified-200 earlier in the day. The service exists and is
-  keyless but is slow/flaky under load -- this pipeline retries and backs off;
-  a failed run simply writes nothing (idempotent re-run next cycle).
-  Pagination: FDW documents ?limit=&offset= on its DRF endpoints, but the
-  CSV renderer's behavior could not be confirmed live during the 502 window.
-  The pipeline passes limit/offset when set; if the server ignores them and
-  returns the full filtered set anyway, curated.py dedups make that harmless.
+Downloads market price data from FEWS NET's REST API for food-insecure
+countries. Covers wholesale/retail/producer market prices across monitored
+locations in Africa, the Middle East, and South/Southeast Asia.
 
-Backfill depth is large (Ethiopia alone goes back decades), so the default
-run filters to start_date >= today-10y. --backfill fetches full available
-history in one request (no documented server-side year chunking).
+API: fdw.fews.net REST endpoints (keyless, no auth required)
+  Market price facts: https://fdw.fews.net/api/marketpricefacts.csv
+
+NOTE: During initial probing (2026-08-24), the FEWS NET warehouse was flaky —
+the API root and resource list returned 200, but every data query 502'd or
+timed out. Pipeline is built defensively off the documented column list;
+retries with exponential backoff and writes nothing on failure. A live run
+should be attempted when the warehouse recovers.
+
+Default window: last 10 years of monthly observations.
+--backfill: full history from source floor.
 
 CLI:
-  python fews_net_pipeline.py             # incremental: last 10 years
-  python fews_net_pipeline.py --backfill  # full available history
+  python fews_net_pipeline.py              # last 10 years
+  python fews_net_pipeline.py --backfill   # full history
 
-Outputs:
-  storage/raw/fewsnet/food_prices/fews_net_food_prices_{mode}_{YYYYMMDD}.parquet
-  (CATALOG: fews_net_food_prices)
+Output:
+  storage/raw/fews_net/fews_net_food_prices_{mode}_{YYYYMMDD}.parquet
 """
 
 import argparse
 import datetime
-import io
 import os
 import time
 
 import pandas as pd
 import requests
-
 from storage_utils import write_partitioned
 
-FDW_URL = "https://fdw.fews.net/api/marketpricefacts.csv"
-OUTPUT_DIR = os.path.join("storage", "raw", "fewsnet", "food_prices")
+BASE_DIR = os.path.join("storage", "raw", "fews_net")
 MAX_RETRIES = 3
 BACKOFF_SECONDS = 30
 REQUEST_TIMEOUT = 300
-INCREMENTAL_YEARS = 10
+HEADERS = {"User-Agent": "Mozilla/5.0 consumer-goods-price-pipeline/1.0"}
+
+# REST endpoint — returns CSV with market price observations
+API_URL = "https://fdw.fews.net/api/marketpricefacts.csv"
+
+# Default lookback for incremental mode
+DEFAULT_WINDOW_YEARS = 10
 
 
-def _get_params(backfill: bool) -> dict:
-    """Query params for one fetch: fields=simple plus a start_date floor."""
-    params = {"fields": "simple"}
-    if not backfill:
-        cutoff = datetime.date.today() - datetime.timedelta(days=365 * INCREMENTAL_YEARS)
-        params["start_date"] = cutoff.isoformat()
-    return params
+def _fetch_data(start_date: str | None = None) -> pd.DataFrame:
+    """Fetch market price facts from FEWS NET REST API.
 
+    Returns a DataFrame with the documented FEWS NET market price schema.
+    On failure (timeout, 502, etc.), returns an empty DataFrame.
+    """
+    params: dict = {"fields": "simple"}
+    if start_date:
+        params["start_date"] = start_date
 
-def download_prices(backfill: bool) -> pd.DataFrame:
-    """Download the FDW market-price facts CSV into a raw DataFrame."""
-    params = _get_params(backfill)
     for attempt in range(1, MAX_RETRIES + 1):
         try:
+            print(f"  Attempt {attempt}/{MAX_RETRIES} (timeout {REQUEST_TIMEOUT}s)...")
             r = requests.get(
-                FDW_URL, params=params, timeout=REQUEST_TIMEOUT,
-                headers={"User-Agent": "consumer-goods-price-pipeline/0.1 (personal research)"},
+                API_URL,
+                params=params,
+                headers=HEADERS,
+                timeout=REQUEST_TIMEOUT,
             )
-            if r.status_code == 200:
-                return pd.read_csv(io.BytesIO(r.content), low_memory=False)
-            print(f"  HTTP {r.status_code}: {r.text[:150]}")
-            return pd.DataFrame()
-        except (requests.RequestException, pd.errors.ParserError) as exc:
-            print(f"  Download/parse error (attempt {attempt}): {exc}")
-            time.sleep(BACKOFF_SECONDS * attempt)
+            if r.status_code == 200 and r.content:
+                from io import StringIO
+                return pd.read_csv(StringIO(r.text), low_memory=False)
+            if r.status_code in (502, 503, 504):
+                print(f"    Server error {r.status_code}, retrying...")
+                time.sleep(BACKOFF_SECONDS * attempt)
+            else:
+                print(f"    HTTP {r.status_code}")
+                if attempt < MAX_RETRIES:
+                    time.sleep(BACKOFF_SECONDS)
+                else:
+                    return pd.DataFrame()
+        except requests.Timeout:
+            print(f"    Request timed out ({REQUEST_TIMEOUT}s)")
+            if attempt < MAX_RETRIES:
+                time.sleep(BACKOFF_SECONDS)
+        except requests.RequestException as e:
+            print(f"    Request error: {e}")
+            if attempt < MAX_RETRIES:
+                time.sleep(BACKOFF_SECONDS)
+
     return pd.DataFrame()
 
 
-def parse_frame(raw: pd.DataFrame) -> pd.DataFrame:
-    """Normalize the FDW wide CSV into the store's tidy schema."""
-    if raw.empty:
-        return raw
+def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize FEWS NET column names to snake_case and add source/fetched_at."""
+    if df.empty:
+        return df
 
-    rows = pd.DataFrame({
-        "period_date":   pd.to_datetime(raw.get("period_date"), errors="coerce"),
-        "country":       raw.get("country"),
-        "admin_1":       raw.get("admin_1"),
-        "admin_2":       raw.get("admin_2"),
-        "market":        raw.get("market"),
-        "cpcv2":         raw.get("cpcv2"),
-        "product":       raw.get("product"),
-        "price_type":    raw.get("price_type"),
-        "value":         pd.to_numeric(raw.get("value"), errors="coerce"),
-        "currency":      raw.get("currency"),
-        "unit":          raw.get("unit"),
-        "latitude":      pd.to_numeric(raw.get("latitude"), errors="coerce"),
-        "longitude":     pd.to_numeric(raw.get("longitude"), errors="coerce"),
-    })
-    rows = rows.dropna(subset=["market", "product", "period_date", "value"])
-    rows["source"] = "fews_net"
-    return rows
+    df.columns = (
+        df.columns.str.strip()
+        .str.lower()
+        .str.replace(r"[^a-z0-9]+", "_", regex=True)
+        .str.strip("_")
+    )
+
+    # Map known FEWS NET column variants to canonical names
+    rename_map = {}
+    for col in df.columns:
+        if "market" in col and "price" in col and "factor" in col:
+            rename_map[col] = "market_price_factor"
+        elif col == "cpcv2":
+            rename_map[col] = "cpcv2_code"
+
+    if rename_map:
+        df = df.rename(columns=rename_map)
+
+    df["source"] = "fews_net"
+    df["fetched_at"] = datetime.datetime.utcnow().isoformat()
+
+    return df
 
 
-def main():
-    parser = argparse.ArgumentParser(description="FEWS NET Data Warehouse market prices pipeline")
-    parser.add_argument("--backfill", action="store_true",
-                        help=f"Fetch full available history (default: last {INCREMENTAL_YEARS} years)")
-    args = parser.parse_args()
+def main(backfill: bool = False) -> None:
+    now = datetime.datetime.utcnow()
+    today_str = now.strftime("%Y%m%d")
+    mode = "backfill" if backfill else "incremental"
+    print(f"FEWS NET Market Prices Pipeline  mode={mode}\n")
 
-    now = datetime.datetime.now(datetime.timezone.utc)
-    today = now.strftime("%Y%m%d")
-    mode = "backfill" if args.backfill else "incremental"
-    print(f"FEWS NET Food Prices  mode={mode}")
+    os.makedirs(BASE_DIR, exist_ok=True)
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    start_date = None
+    if not backfill:
+        start = now - datetime.timedelta(days=DEFAULT_WINDOW_YEARS * 365)
+        start_date = start.strftime("%Y-%m-%d")
+        print(f"  Window: {start_date} to present\n")
 
-    print("  Downloading FDW marketpricefacts.csv ...")
-    raw = download_prices(args.backfill)
-    if raw.empty:
-        print("  No data downloaded.")
+    df = _fetch_data(start_date=start_date)
+
+    if df.empty:
+        print("\nNo data returned from FEWS NET (service may be unavailable).")
+        print("Nothing written.")
         return
 
-    out = parse_frame(raw)
-    print(f"  Parsed {len(out):,} observations across {out['country'].nunique()} countries, "
-          f"{out['market'].nunique()} markets, {out['product'].nunique()} products")
-    if out.empty:
-        print("  Nothing to write.")
-        return
+    df = _normalize_columns(df)
+    df = df.drop_duplicates()
 
-    out["fetched_at"] = now.isoformat()
-    out = out.sort_values(["country", "market", "product", "period_date"]).reset_index(drop=True)
+    # Dedup key: market/cpcv2/price_type/period_date if columns exist
+    dedup_cols = [c for c in ["market", "cpcv2_code", "market_price_factor", "period_date"]
+                  if c in df.columns]
+    if dedup_cols:
+        df = df.drop_duplicates(subset=dedup_cols)
 
-    path = write_partitioned(out, OUTPUT_DIR, f"fews_net_food_prices_{mode}_{today}.parquet")
-    print(f"  -> {path}  ({len(out):,} rows)")
+    path = write_partitioned(
+        df, BASE_DIR,
+        f"fews_net_food_prices_{mode}_{today_str}.parquet",
+    )
+    print(f"\n-> {path}")
+    print(f"   {len(df):,} rows | columns: {list(df.columns)}")
 
-    print("\n--- FEWS NET FOOD PRICES PIPELINE COMPLETE ---")
+    print("\n--- FEWS NET MARKET PRICES PIPELINE COMPLETE ---")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="FEWS NET Data Warehouse market prices (food-insecure countries, keyless)"
+    )
+    parser.add_argument("--backfill", action="store_true",
+                        help="Fetch full history from source floor")
+    args = parser.parse_args()
+    main(backfill=args.backfill)

@@ -299,6 +299,33 @@ SCHEMAS: dict[str, dict] = {
         "critical_nn": ["country", "year", "inflation"],
         "date_col":    "year",
     },
+    # ── USDA ERS specialty crops ───────────────────────────────────────────
+    "ers_fruit_nut_prices": {
+        "required":    ["series_id", "date", "value", "fetched_at"],
+        "critical_nn": ["series_id", "date", "value"],
+        "date_col":    "date",
+    },
+    "ers_veg_prices": {
+        "required":    ["series_id", "date", "value", "fetched_at"],
+        "critical_nn": ["series_id", "date", "value"],
+        "date_col":    "date",
+    },
+    "ers_fruit_nut_trade": {
+        "required":    ["series_id", "date", "fetched_at"],
+        "critical_nn": ["series_id"],
+        "date_col":    "date",
+    },
+    "ers_veg_trade": {
+        "required":    ["series_id", "date", "fetched_at"],
+        "critical_nn": ["series_id"],
+        "date_col":    "date",
+    },
+    # ── FEWS NET food-insecure market prices ──────────────────────────────
+    "fews_net_food_prices": {
+        "required":    ["market", "value", "fetched_at"],
+        "critical_nn": ["market", "value"],
+        "date_col":    None,
+    },
 }
 
 

@@ -68,10 +68,6 @@ CATALOG: dict[str, str] = {
     "usda_prices_received":     _glob("usda/prices_received/**/*.parquet"),
     "usda_prices_paid":         _glob("usda/prices_paid/**/*.parquet"),
     "noaa_seafood_landings":    _glob("noaa/seafood_landings/**/*.parquet"),
-    "ers_fruit_nut_prices":     _glob("ers/fruit_nut_prices/**/*.parquet"),
-    "ers_veg_prices":           _glob("ers/veg_prices/**/*.parquet"),
-    "ers_fruit_nut_trade":      _glob("ers/fruit_nut_trade/**/*.parquet"),
-    "ers_veg_trade":            _glob("ers/veg_trade/**/*.parquet"),
     # ── Energy — retail consumer prices (EIA) ───────────────────────────────
     "eia_gas_retail":           _glob("eia/gas_retail/**/*.parquet"),
     "eia_gas_spot":             _glob("eia/gas_spot/**/*.parquet"),
@@ -92,7 +88,6 @@ CATALOG: dict[str, str] = {
     "oecd_cpi":                 _glob("oecd/cpi/**/*.parquet"),
     "statcan_retail_prices":    _glob("statcan/retail_prices/**/*.parquet"),
     "wfp_food_prices":          _glob("wfp/food_prices/**/*.parquet"),
-    "fews_net_food_prices":     _glob("fewsnet/food_prices/**/*.parquet"),
     "fao_food_prices":          _glob("fao/food_prices/**/*.parquet"),
     "fao_meat_prices":          _glob("fao/meat_prices/**/*.parquet"),
     "worldbank_pinksheet":      _glob("worldbank/pinksheet/**/*.parquet"),
@@ -102,7 +97,13 @@ CATALOG: dict[str, str] = {
     "fred_used_cars":           _glob("fred/used_cars/**/*.parquet"),
     "fred_cpi":                 _glob("fred/cpi/**/*.parquet"),
     "apininja_inflation":       _glob("apininja/inflation/**/*.parquet"),
-    
+    # ── USDA ERS specialty crops (fruit/nuts + vegetables/pulses) ──────────
+    "ers_fruit_nut_prices":    _glob("ers/ers_fruit_nut_prices/**/*.parquet"),
+    "ers_veg_prices":          _glob("ers/ers_veg_prices/**/*.parquet"),
+    "ers_fruit_nut_trade":     _glob("ers/ers_fruit_nut_trade/**/*.parquet"),
+    "ers_veg_trade":           _glob("ers/ers_veg_trade/**/*.parquet"),
+    # ── FEWS NET food-insecure market prices ──────────────────────────────
+    "fews_net_food_prices":    _glob("fews_net/**/*.parquet"),
 }
 
 

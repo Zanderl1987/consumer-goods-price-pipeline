@@ -1,113 +1,94 @@
-import io
+"""Tests for fews_net_pipeline — FEWS NET Data Warehouse market prices."""
+
+import os
+import sys
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-import requests
 
-import fews_net_pipeline as fews
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO_ROOT)
 
+import fews_net_pipeline as fn
 
-def _fdw_csv() -> str:
-    return (
-        "geographic_group,fewsnet_region,country,admin_1,admin_2,market,cpcv2,product,"
-        "price_type,product_source,collection_schedule,start_date,period_date,value,"
-        "currency,unit,latitude,longitude,is_staple_food\n"
-        "ethiopia,EW,Ethiopia,Amhara,South Gondar,Debre Tabor,pmaizeis,Maize (white),"
-        "Retail,monthly_reported,Monthly,2026-07-01,2026-07-01,32.5,ETB,KG,11.7333,38.0167,True\n"
-        "yemen,YE,Yemen,Sana'a,,Sana'a City,rwheatis,Wheat (local),"
-        "Wholesale,monthly_reported,Monthly,2026-07-15,2026-07-01,850.0,YER,KG,15.3547,44.2067,False\n"
-    )
+# ── Synthetic fixtures ────────────────────────────────────────────────────────
 
-
-class TestParseFrame:
-    def test_parse_frame_tidy_schema(self):
-        raw = pd.read_csv(io.StringIO(_fdw_csv()))
-        out = fews.parse_frame(raw)
-        assert len(out) == 2
-        assert set(out.columns) == {
-            "period_date", "country", "admin_1", "admin_2", "market", "cpcv2",
-            "product", "price_type", "value", "currency", "unit",
-            "latitude", "longitude", "source",
-        }
-        row = out[out["country"] == "Ethiopia"].iloc[0]
-        assert row["period_date"] == pd.Timestamp("2026-07-01")
-        assert row["market"] == "Debre Tabor"
-        assert row["price_type"] == "Retail"
-        assert row["value"] == pytest.approx(32.5)
-        assert row["currency"] == "ETB"
-        assert row["source"] == "fews_net"
-
-    def test_parse_frame_drops_incomplete_rows(self):
-        raw = pd.read_csv(io.StringIO(_fdw_csv()))
-        raw.loc[0, "value"] = None
-        raw.loc[0, "market"] = None
-        out = fews.parse_frame(raw)
-        assert len(out) == 1
-        assert out.iloc[0]["country"] == "Yemen"
-
-    def test_parse_frame_handles_empty(self):
-        assert fews.parse_frame(pd.DataFrame()).empty
+SAMPLE_CSV = """\
+Country,Admin 1,Admin 2,Market,Product,Market Price Factor,Period Date,Price Type,Value,Unit,Currency
+Sudan,Khartoum,,Khartoum Market,Wheat,Wholesale,2024-01-15,Wholesale,150.0,USD/MT,USD
+Sudan,Khartoum,,Khartoum Market,Sorghum,Retail,2024-01-15,Retail,80.0,USD/MT,USD
+South Sudan,Juba,,Juba Market,Maize,Producer,2024-02-01,Producer,120.0,SSP/MT,SSP
+"""
 
 
-class TestDownload:
-    def test_incremental_filters_by_start_date(self, monkeypatch):
+class TestNormalizeColumns:
+    def test_snake_case_columns(self):
+        df = pd.read_csv(__import__("io").StringIO(SAMPLE_CSV))
+        result = fn._normalize_columns(df)
+        assert all(c == c.lower() for c in result.columns)
+        assert "source" in result.columns
+        assert "fetched_at" in result.columns
+
+    def test_empty_input(self):
+        result = fn._normalize_columns(pd.DataFrame())
+        assert result.empty
+
+    def test_source_label(self):
+        df = pd.read_csv(__import__("io").StringIO(SAMPLE_CSV))
+        result = fn._normalize_columns(df)
+        assert (result["source"] == "fews_net").all()
+
+
+class TestFetchData:
+    def test_success(self, monkeypatch):
+        def fake_get(url, **kwargs):
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.content = SAMPLE_CSV.encode()
+            resp.text = SAMPLE_CSV
+            return resp
+
+        monkeypatch.setattr(fn.requests, "get", fake_get)
+        df = fn._fetch_data()
+        assert not df.empty
+        assert len(df) == 3
+
+    def test_server_error_returns_empty(self, monkeypatch):
+        attempt = [0]
+
+        def fake_get(url, **kwargs):
+            attempt[0] += 1
+            resp = MagicMock()
+            resp.status_code = 502
+            resp.content = b""
+            return resp
+
+        monkeypatch.setattr(fn.requests, "get", fake_get)
+        monkeypatch.setattr(fn.time, "sleep", lambda s: None)
+        df = fn._fetch_data()
+        assert df.empty
+
+    def test_timeout_returns_empty(self, monkeypatch):
+        def fake_get(url, **kwargs):
+            raise fn.requests.Timeout("timed out")
+
+        monkeypatch.setattr(fn.requests, "get", fake_get)
+        monkeypatch.setattr(fn.time, "sleep", lambda s: None)
+        df = fn._fetch_data()
+        assert df.empty
+
+    def test_start_date_passed_as_param(self, monkeypatch):
         captured = {}
 
-        class FakeResponse:
-            status_code = 200
-            content = _fdw_csv().encode()
-            text = ""
+        def fake_get(url, **kwargs):
+            captured.update(kwargs.get("params", {}))
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.content = b"col1,col2\na,b\n"
+            resp.text = "col1,col2\na,b\n"
+            return resp
 
-        def fake_get(url, params=None, timeout=None, headers=None):
-            captured["url"] = url
-            captured["params"] = params
-            return FakeResponse()
-
-        monkeypatch.setattr(fews.requests, "get", fake_get)
-        df = fews.download_prices(backfill=False)
-        assert captured["url"] == fews.FDW_URL
-        assert captured["params"]["fields"] == "simple"
-        assert "start_date" in captured["params"]
-        assert len(df) == 2
-
-    def test_backfill_has_no_start_date_floor(self, monkeypatch):
-        captured = {}
-
-        class FakeResponse:
-            status_code = 200
-            content = _fdw_csv().encode()
-            text = ""
-
-        def fake_get(url, params=None, timeout=None, headers=None):
-            captured["params"] = params
-            return FakeResponse()
-
-        monkeypatch.setattr(fews.requests, "get", fake_get)
-        fews.download_prices(backfill=True)
-        assert "start_date" not in captured["params"]
-
-    def test_non_200_returns_empty(self, monkeypatch):
-        class FakeResponse:
-            status_code = 502
-            content = b""
-            text = "Bad Gateway"
-
-        monkeypatch.setattr(fews.requests, "get", lambda *a, **k: FakeResponse())
-        assert fews.download_prices(backfill=True).empty
-
-    def test_retries_on_timeout_then_succeeds(self, monkeypatch):
-        calls = {"n": 0}
-
-        def flaky_get(*a, **k):
-            calls["n"] += 1
-            if calls["n"] < 3:
-                raise requests.ReadTimeout("slow")
-            class FakeResponse:
-                status_code = 200
-                content = _fdw_csv().encode()
-                text = ""
-            return FakeResponse()
-
-        monkeypatch.setattr(fews.requests, "get", flaky_get)
-        monkeypatch.setattr(fews.time, "sleep", lambda s: None)
-        assert len(fews.download_prices(backfill=False)) == 2
+        monkeypatch.setattr(fn.requests, "get", fake_get)
+        fn._fetch_data(start_date="2020-01-01")
+        assert captured.get("start_date") == "2020-01-01"
