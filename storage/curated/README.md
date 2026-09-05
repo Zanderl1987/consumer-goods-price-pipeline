@@ -17,7 +17,7 @@ size_categories:
 # Consumer Goods Price Pipeline — Full Curated Snapshot
 
 A dataset of consumer-facing retail prices, government price indexes, and commodity
-prices covering **29 tables** and **1,688,630 rows**.
+prices covering **29 tables** and **1,738,623 rows**.
 
 ## Data Sources
 
@@ -72,10 +72,10 @@ Full source, tests, and architecture docs: https://github.com/Zanderl1987/consum
 
 ## Build Info
 
-- **Generated**: 2026-08-26
+- **Generated**: 2026-09-05
 - **Pipeline**: consumer-goods-price-pipeline (https://github.com/Zanderl1987/consumer-goods-price-pipeline)
 - **Tables**: 29
-- **Total Rows**: 1,688,630
+- **Total Rows**: 1,738,623
 - **Total Size**: 18.8 MB
 
 ## License

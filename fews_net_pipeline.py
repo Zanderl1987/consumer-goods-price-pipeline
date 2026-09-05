@@ -9,11 +9,17 @@ locations in Africa, the Middle East, and South/Southeast Asia.
 API: fdw.fews.net REST endpoints (keyless, no auth required)
   Market price facts: https://fdw.fews.net/api/marketpricefacts.csv
 
-NOTE: During initial probing (2026-08-24), the FEWS NET warehouse was flaky —
+NOTE: During initial probing (2026-08-24), the FEWS NET warehouse was flaky -
 the API root and resource list returned 200, but every data query 502'd or
-timed out. Pipeline is built defensively off the documented column list;
-retries with exponential backoff and writes nothing on failure. A live run
-should be attempted when the warehouse recovers.
+timed out. Re-confirmed 2026-09-05: the entire *facts/observation renderer
+family hangs indefinitely (marketpricefacts, marketprice, marketproduct,
+price, datapoint, datapointfacts, priceindexvaluefacts, cropproductionfacts,
+commoditybalancefacts, exchangeratevaluefacts - all timeout; only
+priceratiovaluefacts returns empty) while metadata endpoints (market,
+pricedataset) still respond. This is a systemic upstream renderer outage, so
+this pipeline is PARKED until FEWS NET fixes the renderer or ships an
+alternate bulk export. Pipeline is built defensively off the documented
+column list; retries with exponential backoff and writes nothing on failure.
 
 Default window: last 10 years of monthly observations.
 --backfill: full history from source floor.
