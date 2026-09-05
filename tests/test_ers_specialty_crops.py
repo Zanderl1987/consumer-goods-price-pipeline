@@ -28,9 +28,20 @@ Apples,Canada,Imports,5000,3000,Jan 2024
 Apples,Mexico,Exports,8000,6000,Feb 2024
 """
 
+# Live tidy schema verified 2026-09-05 (seriesID unique per seriesType; 0 codes span types)
+TIDY_PRICE_CSV = """\
+seriesType,seriesID,seriesName,year,monthNumber,unit,value
+Consumer Price Index,CUUR0000SAF1131,Bananas,2026,7,Index,332.0
+Consumer Price Index,CUUR0000SAF1131,Bananas,2026,6,Index,329.9
+Producer Price Index,PCU3114233114235,Dried fruits and vegetables,2026,7,Index,105.4
+Average retail price,APU0000711211,Bananas,2026,7,Dollars per pound,0.710
+"""
+
 
 def _mock_get_csv(url: str) -> pd.DataFrame:
     """Simulate ERS CSV download by parsing the fixture."""
+    if "tidy" in url:
+        return pd.read_csv(StringIO(TIDY_PRICE_CSV))
     if "price" in url:
         return pd.read_csv(StringIO(PRICE_CSV))
     elif "trade" in url:
@@ -72,6 +83,47 @@ class TestParsePriceIndex:
         monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
         df = ers._parse_price_index("https://example.com/price.csv", "Test")
         assert "fetched_at" in df.columns
+
+
+# ── Tidy live schema (2026-09-05) ─────────────────────────────────────────────
+
+class TestParsePriceIndexTidy:
+    def test_long_format_with_series_code(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/tidy.csv", "Fruit & Tree Nuts")
+        assert not df.empty
+        assert "series_id" in df.columns
+        assert "commodity" in df.columns
+        assert "series_type" in df.columns
+        assert "date" in df.columns
+        assert "value" in df.columns
+        assert "fetched_at" in df.columns
+
+    def test_series_id_is_stable_code_not_name(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/tidy.csv", "Fruit & Tree Nuts")
+        assert df["series_id"].iloc[0] == "CUUR0000SAF1131"
+        assert df["series_id"].nunique() == 3  # CPI(Jun+Jul), PPI, retail
+
+    def test_series_type_kept(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/tidy.csv", "Fruit & Tree Nuts")
+        assert (df["series_type"] == "Consumer Price Index").sum() == 2
+        assert (df["series_type"] == "Producer Price Index").sum() == 1
+        assert (df["series_type"] == "Average retail price").sum() == 1
+
+    def test_month_start_date_and_numeric_value(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/tidy.csv", "Fruit & Tree Nuts")
+        assert pd.api.types.is_datetime64_any_dtype(df["date"])
+        assert df["date"].dt.is_month_start.all()
+        assert df["value"].dtype.kind == "f"
+        assert df.loc[df["series_id"] == "APU0000711211", "value"].max() == 0.710
+
+    def test_key_unique_per_series_month(self, monkeypatch):
+        monkeypatch.setattr(ers, "_get_csv", _mock_get_csv)
+        df = ers._parse_price_index("https://example.com/tidy.csv", "Fruit & Tree Nuts")
+        assert df.duplicated(subset=["series_id", "date"]).sum() == 0
 
 
 # ── Trade parsing ─────────────────────────────────────────────────────────────

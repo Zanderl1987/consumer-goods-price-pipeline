@@ -23,6 +23,11 @@ NOTE: media/6476 and media/5629 served BYTE-IDENTICAL price-index files on
 fruit and vegetable series. Both tables will land with identical content until
 ERS splits them again. Documented in docs/SOURCES.md.
 
+Live schema (verified 2026-09-05): each media URL serves one tidy CSV with
+columns seriesType, seriesID, seriesName, year, monthNumber, unit, value,
+covering full history back to 2000 in a single download. The older wide
+"Category + date column" pivot is handled as a fallback.
+
 No API key required.
 
 CLI:
@@ -73,14 +78,43 @@ def _get_csv(url: str) -> pd.DataFrame:
 
 
 def _parse_price_index(url: str, source_label: str) -> pd.DataFrame:
-    """Parse an ERS price-index CSV into a tidy long-format DataFrame."""
+    """Parse an ERS price-index CSV into a tidy long-format DataFrame.
+
+    Live schema (verified 2026-09-05) is already tidy: seriesType, seriesID,
+    seriesName, year, monthNumber, unit, value. Legacy wide "Category + date
+    columns" pivots are handled by the fallback branch below.
+    """
     raw = _get_csv(url)
     if raw.empty:
         return pd.DataFrame()
 
-    # ERS price-index CSVs have a complex structure:
-    # First column is "Category" (series type), subsequent columns are
-    # date-labeled (e.g. "Jan 2020", "Feb 2020"). Melt to long format.
+    lower = {str(c).strip().lower(): str(c) for c in raw.columns}
+    if {"seriesid", "seriesname", "year", "monthnumber", "value"} <= set(lower):
+        result = raw.rename(columns={
+            lower["seriesid"]: "series_id",
+            lower["seriesname"]: "commodity",
+            lower["year"]: "year",
+            lower["monthnumber"]: "month",
+        })
+        if "seriestype" in lower:
+            result = result.rename(columns={lower["seriestype"]: "series_type"})
+        result["value"] = pd.to_numeric(result["value"], errors="coerce")
+        result["date"] = pd.to_datetime(
+            result["year"].astype(int).astype(str)
+            + "-"
+            + result["month"].astype(int).astype(str)
+            + "-01",
+            errors="coerce",
+        )
+        result = result.dropna(subset=["date", "value"])
+        keep = ["series_id", "commodity", "series_type", "date", "value"]
+        result = result[[c for c in keep if c in result.columns]]
+        result["source"] = source_label
+        result["fetched_at"] = datetime.datetime.utcnow().isoformat()
+        return result.drop_duplicates(subset=["series_id", "date"]).reset_index(drop=True)
+
+    # Legacy wide pivot: first column is "Category" (series type), subsequent
+    # columns are date-labeled (e.g. "Jan 2020", "Feb 2020"). Melt to long.
     if "Category" not in raw.columns:
         # Try to find the actual first column name
         first_col = raw.columns[0]
