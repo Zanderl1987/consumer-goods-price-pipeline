@@ -120,8 +120,9 @@ KEYS: dict[str, list[str]] = {
     "wfp_food_prices":        ["market_id", "commodity_id", "date", "pricetype"],
     # FEWS NET — one observation per market/product/price-type/period; cpcv2
     # is the commodity code, product its name (kept out of the key so a
-    # rename doesn't fork history).
-    "fews_net_food_prices":   ["market", "cpcv2", "price_type", "period_date"],
+    # rename doesn't fork history). country included because market names
+    # are not globally unique across monitored markets.
+    "fews_net_food_prices":   ["country", "market", "cpcv2", "price_type", "period_date"],
     # FAO CP/PP domains are per-country (area); corrected from the
     # originally-reserved item-only key after live verification 2026-08-04.
     "fao_food_prices":        ["area", "item", "date"],
@@ -132,13 +133,6 @@ KEYS: dict[str, list[str]] = {
     "fred_consumer_prices":   ["series_id", "date"],
     "fred_used_cars":         ["series_id", "date"],
     "fred_cpi":               ["series_id", "date"],
-    # USDA ERS specialty crops
-    "ers_fruit_nut_prices":  ["series_id", "date"],
-    "ers_veg_prices":        ["series_id", "date"],
-    "ers_fruit_nut_trade":   ["series_id", "date"],
-    "ers_veg_trade":         ["series_id", "date"],
-    # FEWS NET market prices
-    "fews_net_food_prices":  ["market", "cpcv2_code", "market_price_factor", "period_date"],
 }
 
 

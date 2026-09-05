@@ -185,7 +185,7 @@ PIPELINES: list[PipelineSpec] = [
         tables=["ers_fruit_nut_prices", "ers_veg_prices",
                 "ers_fruit_nut_trade", "ers_veg_trade"],
         backfill_args=["--backfill"],
-        timeout=600,
+        timeout=3600,
     ),
     PipelineSpec(
         name="fews_net",
@@ -194,7 +194,7 @@ PIPELINES: list[PipelineSpec] = [
         stage=1,
         tables=["fews_net_food_prices"],
         backfill_args=["--backfill"],
-        timeout=600,
+        timeout=3600,
     ),
     PipelineSpec(
         name="kroger",
